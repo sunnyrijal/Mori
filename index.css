@@ -1,0 +1,29 @@
+@import "tailwindcss";
+@config "./tailwind.config.js";
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+input, textarea {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+}
+
+* {
+  user-select: none;
+  -webkit-user-select: none;
+}
