@@ -9,7 +9,7 @@ self.addEventListener('message', event => {
         const messaging = firebase.messaging();
         messaging.onBackgroundMessage(payload => {
             const { title, body, icon } = payload.notification || {};
-            self.registration.showNotification(title || 'Life Companion', {
+            self.registration.showNotification(title || 'Gozi', {
                 body: body || 'You have a new activity suggestion waiting.',
                 icon: icon || '/logo.svg',
                 badge: '/logo.svg',

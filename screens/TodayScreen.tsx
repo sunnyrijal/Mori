@@ -4,8 +4,10 @@ import { AppState, SocialContext, Suggestion, TimeAvailability } from '@/types';
 import { useAppStore } from '@/hooks/useAppStore';
 import { ProgressCard } from '@/components/ProgressCard';
 import { MoodDropdown } from '@/components/MoodDropdown';
-import { BookOpenIcon, HeartIcon, LightbulbIcon, LoaderIcon, MapPinIcon, PodcastIcon, YoutubeIcon, SpotifyIcon, ChevronDownIcon, CheckCircleIcon, GamepadIcon } from '@/components/icons/Icons';
+import { BookOpenIcon, HeartIcon, LightbulbIcon, LoaderIcon, MapPinIcon, PodcastIcon, YoutubeIcon, SpotifyIcon, ChevronDownIcon, CheckCircleIcon, GamepadIcon, SendIcon } from '@/components/icons/Icons';
 import { WeeklySurveyModal } from '@/components/WeeklySurveyModal';
+import { ActivityMap } from '@/components/ActivityMap';
+import { WelcomeTour } from '@/components/WelcomeTour';
 
 type TodayScreenProps = {
     state: AppState;
@@ -22,18 +24,58 @@ const getGreeting = () => {
 const FREE_DAILY_LIMIT = 3;
 
 export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
-    const { userProfile, currentMood, socialContext, currentTimeAvailability, isDateNightMode, inventorySuggestions, externalContentSuggestions, musicSuggestions, localActivitySuggestions, miniGameSuggestions, dailyRefresh, isLoading, isSurveyDue, currentWeeklySurvey } = state;
-    const { setMood, setSocialContext, setTimeAvailability, toggleDateNightMode, fetchSuggestions, fetchDailyRefresh, completeDailyRefresh, fetchWeeklySurvey, submitWeeklySurvey, dismissWeeklySurvey } = actions;
+    const { userProfile, currentMood, socialContext, currentTimeAvailability, isDateNightMode, inventorySuggestions, externalContentSuggestions, musicSuggestions, localActivitySuggestions, miniGameSuggestions, dailyRefresh, isLoading, isSurveyDue, currentWeeklySurvey, friendInventoryContext } = state;
+    const { setMood, setSocialContext, setTimeAvailability, toggleDateNightMode, fetchSuggestions, fetchDailyRefresh, completeDailyRefresh, fetchWeeklySurvey, submitWeeklySurvey, dismissWeeklySurvey, setFriendInventoryContext } = actions;
 
     const today = new Date().toDateString();
     const isFree = userProfile.subscriptionTier === 'Free';
     const dailyFetchCount = state.dailyFetchCountDate === today ? (state.dailyFetchCount || 0) : 0;
     const isRefreshLimitReached = isFree && dailyFetchCount >= FREE_DAILY_LIMIT;
 
-    const [refreshAnswer, setRefreshAnswer] = useState('');
-    const [showRefreshResult, setShowRefreshResult] = useState(false);
-    const [isDailyRefreshOpen, setIsDailyRefreshOpen] = useState(true);
+    const todayKey = `dr-${new Date().toDateString()}`;
+    const [refreshAnswer, setRefreshAnswer] = useState(() => {
+        return localStorage.getItem(`daily_refresh_answer_${todayKey}`) || '';
+    });
+    const [showRefreshResult, setShowRefreshResult] = useState(() => {
+        return localStorage.getItem(`daily_refresh_completed_${todayKey}`) === 'true';
+    });
+    const [isDailyRefreshOpen, setIsDailyRefreshOpen] = useState(() => {
+        return localStorage.getItem(`daily_refresh_completed_${todayKey}`) !== 'true';
+    });
     const contextSectionRef = useRef<HTMLDivElement>(null);
+    const [isTourActive, setIsTourActive] = useState(false);
+
+    const [showMap, setShowMap] = useState(false);
+    const [mapCoords, setMapCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [fetchingCoords, setFetchingCoords] = useState(false);
+
+    const handleMapToggle = () => {
+        if (!showMap && !mapCoords) {
+            setFetchingCoords(true);
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setMapCoords({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    });
+                    setShowMap(true);
+                    setFetchingCoords(false);
+                },
+                (err) => {
+                    console.warn("Failed to get geolocation for map, using default coordinates (Mankato, MN)", err);
+                    setMapCoords({
+                        latitude: 44.1636,
+                        longitude: -93.9994
+                    });
+                    setShowMap(true);
+                    setFetchingCoords(false);
+                },
+                { timeout: 7000 }
+            );
+        } else {
+            setShowMap(!showMap);
+        }
+    };
 
     const scrollToContext = () => {
         if (!contextSectionRef.current) return;
@@ -42,9 +84,40 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
         window.scrollTo({ top, behavior: 'smooth' });
     };
 
+    const prevContextRef = useRef({ currentMood, socialContext, currentTimeAvailability });
+
     useEffect(() => {
-        if (!dailyRefresh) fetchDailyRefresh();
-    }, [dailyRefresh, fetchDailyRefresh]);
+        const key = `dr-${new Date().toDateString()}`;
+        const isCompleted = localStorage.getItem(`daily_refresh_completed_${key}`) === 'true';
+        
+        if (!dailyRefresh) {
+            fetchDailyRefresh(currentMood, socialContext, currentTimeAvailability);
+        } else if (!isCompleted) {
+            const contextChanged = 
+                prevContextRef.current.currentMood !== currentMood ||
+                prevContextRef.current.socialContext !== socialContext ||
+                prevContextRef.current.currentTimeAvailability !== currentTimeAvailability;
+            
+            if (contextChanged) {
+                fetchDailyRefresh(currentMood, socialContext, currentTimeAvailability, true);
+            }
+        }
+        prevContextRef.current = { currentMood, socialContext, currentTimeAvailability };
+    }, [currentMood, socialContext, currentTimeAvailability, dailyRefresh, fetchDailyRefresh]);
+
+    useEffect(() => {
+        const tourKey = `gozi_tour_completed_${userProfile.username || 'user'}`;
+        const completed = localStorage.getItem(tourKey) === 'true';
+        if (!completed) {
+            setIsTourActive(true);
+        }
+    }, [userProfile.username]);
+
+    const handleTourComplete = () => {
+        const tourKey = `gozi_tour_completed_${userProfile.username || 'user'}`;
+        localStorage.setItem(tourKey, 'true');
+        setIsTourActive(false);
+    };
 
     useEffect(() => {
         if (currentMood && socialContext && currentTimeAvailability) {
@@ -52,9 +125,30 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
         }
     }, [currentMood, socialContext, currentTimeAvailability, isDateNightMode, fetchSuggestions]);
 
+    const prevIsLoadingRef = useRef(isLoading);
+    useEffect(() => {
+        if (prevIsLoadingRef.current && !isLoading) {
+            const hasSuggestions = 
+                localActivitySuggestions.length > 0 ||
+                miniGameSuggestions.length > 0 ||
+                inventorySuggestions.length > 0 ||
+                musicSuggestions.length > 0 ||
+                externalContentSuggestions.length > 0;
+            if (hasSuggestions) {
+                setShowMap(false);
+            }
+        }
+        prevIsLoadingRef.current = isLoading;
+    }, [isLoading, localActivitySuggestions, miniGameSuggestions, inventorySuggestions, musicSuggestions, externalContentSuggestions]);
+
     const handleRefreshSubmit = () => {
         setShowRefreshResult(true);
         completeDailyRefresh();
+        localStorage.setItem(`daily_refresh_completed_${todayKey}`, 'true');
+        localStorage.setItem(`daily_refresh_answer_${todayKey}`, refreshAnswer);
+        setTimeout(() => {
+            setIsDailyRefreshOpen(false);
+        }, 3000);
     };
 
     return (
@@ -64,12 +158,16 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                     <p className="text-ios-muted text-[8px] font-bold uppercase tracking-[0.2em]">{getGreeting()}</p>
                     <h1 className="text-2xl font-serif italic text-ios-text dark:text-white leading-tight">{userProfile.username}</h1>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-ios-accent/10 border border-ios-accent/20 flex items-center justify-center">
+                <button
+                    onClick={() => actions.setActiveScreen('Profile')}
+                    className="w-8 h-8 rounded-full bg-ios-accent/10 border border-ios-accent/20 flex items-center justify-center hover:bg-ios-accent/20 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-ios-accent"
+                    aria-label="Go to Profile"
+                >
                     <span className="text-sm">👤</span>
-                </div>
+                </button>
             </header>
 
-            {isSurveyDue && !isFree && (
+            {isSurveyDue && (
                 <div className="bg-ios-accent dark:bg-blue-700 rounded-2xl p-4 text-white shadow-sm flex justify-between items-center">
                     <div>
                         <h3 className="font-serif italic text-xl">Weekly Check-in</h3>
@@ -116,9 +214,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                                     <button
                                         onClick={handleRefreshSubmit}
                                         disabled={!refreshAnswer.trim()}
-                                        className="bg-ios-accent hover:bg-black/80 disabled:bg-ios-muted/20 disabled:text-ios-muted text-white px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-colors"
+                                        className="flex-shrink-0 bg-ios-accent hover:bg-black/80 disabled:bg-ios-muted/20 disabled:text-ios-muted text-white w-11 h-11 rounded-xl transition-colors flex items-center justify-center"
+                                        aria-label="Submit answer"
                                     >
-                                        Submit
+                                        <SendIcon className="w-4 h-4" />
                                     </button>
                                 </div>
                             ) : (
@@ -133,7 +232,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 </div>
             )}
 
-            <div ref={contextSectionRef} className="space-y-6 scroll-mt-4">
+            <div ref={contextSectionRef} id="current-context-section" className="space-y-6 scroll-mt-4">
                 <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-ios-muted">Current Context</h2>
                 
                 <MoodDropdown selectedMood={currentMood} onSelectMood={setMood} onOpen={scrollToContext} />
@@ -141,12 +240,15 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 <div className="grid grid-cols-2 gap-4">
                     <select
                         value={socialContext || ''}
-                        onChange={(e) => setSocialContext(e.target.value as SocialContext)}
+                        onChange={(e) => setSocialContext(e.target.value)}
                         onFocus={scrollToContext}
                         className="bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 text-ios-text dark:text-white rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-ios-accent appearance-none shadow-sm"
                     >
                         <option value="" disabled>Social Context</option>
                         {Object.values(SocialContext).map(c => <option key={c} value={c}>{c}</option>)}
+                        {userProfile.friendUsernames && userProfile.friendUsernames.map(f => (
+                            <option key={f} value={f}>With {f}</option>
+                        ))}
                     </select>
                     <select
                         value={currentTimeAvailability || ''}
@@ -158,6 +260,30 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                         {Object.values(TimeAvailability).map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                 </div>
+
+                {userProfile.friendUsernames?.includes(socialContext as string) && (
+                    <div className="bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 rounded-2xl p-4 space-y-3 shadow-sm animate-fade-in">
+                        <div className="flex flex-col gap-0.5">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-ios-muted">Location &amp; suggestions mode</p>
+                            <h4 className="text-xs font-semibold text-ios-text dark:text-white">Whose stuff should we suggest activities around?</h4>
+                        </div>
+                        <div className="flex bg-ios-bg dark:bg-gray-900 p-1 rounded-xl gap-1 border border-ios-border/30 dark:border-gray-700/50">
+                            {[
+                                { id: 'my', label: 'At My Place' },
+                                { id: 'their', label: `At ${socialContext}'s` },
+                                { id: 'both', label: 'Both Combined' }
+                            ].map(opt => (
+                                <button
+                                    key={opt.id}
+                                    onClick={() => setFriendInventoryContext(opt.id as 'my' | 'their' | 'both')}
+                                    className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${friendInventoryContext === opt.id ? 'bg-white dark:bg-gray-800 text-ios-text dark:text-white shadow-sm border border-ios-border/30 dark:border-gray-750' : 'text-ios-muted hover:text-ios-text dark:hover:text-white'}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 
                 {socialContext === SocialContext.MyPartner && (
                      <button 
@@ -170,6 +296,51 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 )}
             </div>
 
+            {/* Get Out There / Map View - Always Available */}
+            <div className="space-y-4 pt-6 border-t border-ios-border/30 dark:border-gray-800">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 ml-1">
+                        <div className="text-ios-accent"><MapPinIcon className="w-4 h-4" /></div>
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-ios-muted">Get Out There</h3>
+                    </div>
+                    <button 
+                        id="map-toggle-btn"
+                        onClick={handleMapToggle}
+                        className="px-3 py-1.5 bg-ios-bg dark:bg-gray-700/50 hover:bg-ios-border dark:hover:bg-gray-700 border border-ios-border dark:border-gray-700 rounded-xl text-[9px] font-bold uppercase tracking-wider text-ios-text dark:text-white transition-colors flex items-center gap-1.5"
+                        disabled={fetchingCoords}
+                    >
+                        {fetchingCoords ? (
+                            <>
+                                <LoaderIcon className="w-2.5 h-2.5 animate-spin text-ios-accent" />
+                                Locating...
+                            </>
+                        ) : showMap ? (
+                            <>
+                                <MapPinIcon className="w-2.5 h-2.5 text-red-500" />
+                                Hide Map
+                            </>
+                        ) : (
+                            <>
+                                <MapPinIcon className="w-2.5 h-2.5 text-ios-accent" />
+                                Show Map
+                            </>
+                        )}
+                    </button>
+                </div>
+                
+                {showMap && mapCoords && (
+                    <ActivityMap latitude={mapCoords.latitude} longitude={mapCoords.longitude} />
+                )}
+                
+                {localActivitySuggestions.length > 0 && (
+                    <div className="grid gap-4">
+                        {localActivitySuggestions.map((item, idx) => (
+                            <SuggestionCard key={idx} suggestion={item} />
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {isLoading ? (
                  <div className="py-20 flex flex-col items-center justify-center text-ios-muted">
                     <LoaderIcon className="w-8 h-8 mb-4 animate-spin text-ios-accent" />
@@ -177,7 +348,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 </div>
             ) : isRefreshLimitReached ? (
                 <div className="bg-white border border-[#E4E0D8] rounded-3xl p-6 text-center shadow-sm animate-fade-in">
-                    <img src="/logo.svg" alt="mascot" className="w-16 h-16 mx-auto mb-4 opacity-80" />
+                    <img src="/gozi-mascot.png" alt="mascot" className="w-16 h-16 mx-auto mb-4 opacity-80 object-cover" />
                     <h3 className="text-lg font-serif italic text-[#1A1815] mb-1">You've used your 3 free refreshes today</h3>
                     <p className="text-xs text-[#8A8580] mb-5 leading-relaxed">Upgrade to Premium for unlimited daily suggestions, mood-matched music picks, local activity discovery, and more.</p>
                     <button
@@ -214,20 +385,11 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                             items={musicSuggestions}
                         />
                     )}
-                    
                     {externalContentSuggestions.length > 0 && (
                         <SuggestionSection 
                             title="Discovery" 
                             icon={<BookOpenIcon className="w-4 h-4" />}
                             items={externalContentSuggestions}
-                        />
-                    )}
-
-                    {localActivitySuggestions.length > 0 && (
-                        <SuggestionSection 
-                            title="Get Out There" 
-                            icon={<MapPinIcon className="w-4 h-4" />}
-                            items={localActivitySuggestions}
                         />
                     )}
                 </div>
@@ -244,6 +406,13 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 survey={currentWeeklySurvey} 
                 isLoading={isLoading} 
             />
+
+            {isTourActive && (
+                <WelcomeTour 
+                    username={userProfile.username || 'there'} 
+                    onComplete={handleTourComplete} 
+                />
+            )}
         </div>
     );
 };

@@ -31,7 +31,7 @@ export const ACHIEVEMENTS: Achievement[] = [
 
 const getTrialEndDate = (): string => {
     const date = new Date();
-    date.setDate(date.getDate() + 30);
+    date.setDate(date.getDate() + 7);
     return date.toISOString();
 };
 
@@ -70,7 +70,7 @@ export const INITIAL_APP_STATE: AppState = {
         {
             id: 'initial-ai-message',
             sender: 'ai',
-            text: "Hello! I'm your Life Companion. Tell me what you have — streaming services, hobbies, gear, games — and I'll suggest exactly what to do with your time. What mood are you in today?",
+            text: "Hi, I am Gozi! Tell me what you have (streaming services, hobbies, gear, games) and I'll suggest exactly what to do with your time. What mood are you in today?",
             timestamp: new Date().toISOString(),
         }
     ],
@@ -103,4 +103,5 @@ export const INITIAL_APP_STATE: AppState = {
     suggestionsFetchCount: 0,
     dailyFetchCount: 0,
     dailyFetchCountDate: null,
+    friendInventoryContext: 'both',
 };

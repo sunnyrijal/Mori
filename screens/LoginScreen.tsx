@@ -18,26 +18,51 @@ const AppleLogo = () => (
 
 export const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleGoogleClick = async () => {
+    console.log("Google button clicked!");
     setLoading(true);
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+    setErrorMsg(null);
+    try {
+      console.log("Calling supabase.auth.signInWithOAuth...");
+      const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
+      console.log("Supabase response:", { data, error });
+      if (error) setErrorMsg(error.message);
+    } catch (error: any) {
+      console.error('Google sign‑in error:', error);
+      setErrorMsg(error?.message || 'Failed to sign in with Google');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAppleClick = async () => {
+    console.log("Apple button clicked!");
     setLoading(true);
-    await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin } });
+    setErrorMsg(null);
+    try {
+      console.log("Calling supabase.auth.signInWithOAuth...");
+      const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: window.location.origin } });
+      console.log("Supabase response:", { data, error });
+      if (error) setErrorMsg(error.message);
+    } catch (error: any) {
+      console.error('Apple sign‑in error:', error);
+      setErrorMsg(error?.message || 'Failed to sign in with Apple');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-ios-bg dark:bg-gray-950 px-6 transition-colors duration-300 relative overflow-hidden font-sans">
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         <div className="text-center mb-8 space-y-3">
-            <div className="w-20 h-20 mx-auto flex items-center justify-center">
-                <img src="/logo.svg" alt="Life Companion" className="w-20 h-20 object-contain drop-shadow-md" />
+            <div className="w-24 h-24 mx-auto flex items-center justify-center">
+                <img src="/gozi-mascot.png" alt="Gozi" className="w-20 h-20 object-contain drop-shadow-md" />
             </div>
             <div className="space-y-1">
-                <h1 className="text-4xl font-serif italic text-ios-text dark:text-white tracking-tight">Life Companion</h1>
+                <h1 className="text-4xl font-serif italic text-ios-text dark:text-white tracking-tight">Gozi</h1>
                 <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-ios-muted">AI-powered activity suggestions</p>
             </div>
         </div>
@@ -45,8 +70,14 @@ export const LoginScreen: React.FC = () => {
         <div className="bg-ios-card dark:bg-gray-900 p-8 border border-ios-border dark:border-gray-800 shadow-2xl rounded-[2rem] transition-all duration-500">
           <div className="mb-8 text-center">
              <h2 className="text-2xl font-serif italic text-ios-text dark:text-gray-100 mb-2">Welcome Back</h2>
-             <p className="text-xs text-ios-muted tracking-wide leading-relaxed">Tell us what you own — streaming, gear, hobbies, games — and we'll suggest exactly what to do with your time.</p>
+             <p className="text-xs text-ios-muted tracking-wide leading-relaxed">Tell us what you own, from streaming and gear to hobbies and games, and we'll suggest exactly what to do with your time.</p>
           </div>
+
+          {errorMsg && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+              <p className="text-xs text-red-600 dark:text-red-400 text-center font-medium">{errorMsg}</p>
+            </div>
+          )}
 
           <div className="space-y-3 mb-8">
             <button

@@ -1,4 +1,4 @@
-# Life Companion Wellness Platform
+# Gozi Wellness Platform
 
 An AI-powered personal assistant that provides hyper-specific activity suggestions based on the user's mood, social context, available time, and personal inventory (streaming services, games, hobbies, fitness gear, kitchen appliances, musical instruments, etc.).
 
@@ -69,7 +69,7 @@ Six achievements tracked automatically:
 
 ### Stripe Payments
 The app has a full Stripe subscription integration:
-- **Products**: "Life Companion Premium" with monthly ($4.99) and annual ($49.99) prices — seeded via `npm run seed`
+- **Products**: "Gozi Premium" with monthly ($4.99) and annual ($49.99) prices — seeded via `npm run seed`
 - **Checkout**: Users click "Upgrade" in Profile > Subscription, which fetches live prices from Stripe and redirects to a hosted checkout
 - **Webhook**: `/api/stripe/webhook` receives Stripe events and syncs data to PostgreSQL via `stripe-replit-sync`
 - **`server/stripeClient.ts`**: Fetches credentials from Replit's Stripe connector (auto-rotated, never hardcoded)

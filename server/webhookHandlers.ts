@@ -1,4 +1,4 @@
-import { getStripeSync } from './stripeClient';
+import { stripeService } from './stripeService';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -9,7 +9,10 @@ export class WebhookHandlers {
         'Ensure webhook route is registered BEFORE app.use(express.json()).'
       );
     }
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature);
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+    if (!webhookSecret) {
+      console.warn('WARNING: STRIPE_WEBHOOK_SECRET is not defined. Webhook signature verification will fail.');
+    }
+    await stripeService.handleWebhook(payload, signature, webhookSecret);
   }
 }

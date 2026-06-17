@@ -96,8 +96,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ username, on
       case 0: return <WelcomeStep username={username} onNext={goNext} />;
       case 1: return <ListSelectStep stepNum={1} totalSteps={TOTAL_VISIBLE_STEPS} title="Where do you play?" subtitle="Gaming platforms" options={GAMING_OPTIONS} selected={data.games} onToggle={id => { const next = data.games.includes(id) ? data.games.filter(g => g !== id) : [...data.games, id]; updateData({ games: next }); }} onNext={goNext} onBack={goBack} />;
       case 2: return <GameDetailStep stepNum={2} totalSteps={TOTAL_VISIBLE_STEPS} data={data} setData={setData} onNext={goNext} onBack={goBack} />;
-      case 3: return <ListSelectStep stepNum={step === 3 && !data.games.some(g => platformsRequiringInput.includes(g)) ? 2 : 3} totalSteps={TOTAL_VISIBLE_STEPS} title="What moves you?" subtitle="Streaming & content" options={STREAMING_OPTIONS} selected={data.streaming} onToggle={id => { const next = data.streaming.includes(id) ? data.streaming.filter(s => s !== id) : [...data.streaming, id]; updateData({ streaming: next }); }} onNext={goNext} onBack={goBack} />;
-      case 4: return <ListSelectStep stepNum={4} totalSteps={TOTAL_VISIBLE_STEPS} title="What are you working towards?" subtitle="Your current goals" options={GOALS_OPTIONS} selected={data.goals} onToggle={id => { const next = data.goals.includes(id) ? data.goals.filter(g => g !== id) : [...data.goals, id]; updateData({ goals: next }); }} onNext={goNext} onBack={goBack} />;
+      case 3: return <ListSelectStep stepNum={step === 3 && !data.games.some(g => platformsRequiringInput.includes(g)) ? 2 : 3} totalSteps={TOTAL_VISIBLE_STEPS} title="Streaming & Content" subtitle="" options={STREAMING_OPTIONS} selected={data.streaming} onToggle={id => { const next = data.streaming.includes(id) ? data.streaming.filter(s => s !== id) : [...data.streaming, id]; updateData({ streaming: next }); }} onNext={goNext} onBack={goBack} />;
+      case 4: return <ListSelectStep stepNum={4} totalSteps={TOTAL_VISIBLE_STEPS} title="What are you working towards?" subtitle="Your current goals" options={GOALS_OPTIONS} selected={data.goals} onToggle={id => { const next = data.goals.includes(id) ? data.goals.filter(g => g !== id) : [...data.goals, id]; updateData({ goals: next }); }} onNext={goNext} onBack={goBack} showScrollIndicator />;
       case 5: return <HobbiesStep stepNum={5} totalSteps={TOTAL_VISIBLE_STEPS} data={data} updateData={updateData} onNext={goNext} onBack={goBack} />;
       case 6: return <PaywallStep onNext={goNext} onBack={goBack} />;
       case 7: return <InventoryStep data={data} updateData={updateData} onComplete={() => onComplete(data)} onBack={goBack} isLoading={isLoading} />;
@@ -194,57 +194,99 @@ const OptionCard: React.FC<{ icon: string; label: string; description: string; s
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
-const WelcomeStep: React.FC<{ username: string; onNext: () => void }> = ({ username, onNext }) => (
-  <div className="min-h-screen flex flex-col items-center justify-between max-w-lg mx-auto px-6 py-14">
-    <div className="w-full space-y-1">
-      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8A8580]">✦ Welcome home</p>
-      <h1 className="text-5xl font-serif italic text-[#1A1815] leading-tight">
-        Hello,<br />
-        <span>{username}.</span>
-      </h1>
-    </div>
+const WelcomeStep: React.FC<{ username: string; onNext: () => void }> = ({ username, onNext }) => {
+  const [askingLocation, setAskingLocation] = useState(false);
 
-    <div className="flex flex-col items-center gap-2">
-      <img
-        src="/logo.svg"
-        alt="Life Companion mascot"
-        className="w-44 h-44 object-contain drop-shadow-md"
-      />
-      <p className="text-xs text-[#8A8580] font-medium tracking-wide">Your Life Companion</p>
-    </div>
+  const handleStart = () => {
+    setAskingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log("Onboarding location permission granted", position);
+          setAskingLocation(false);
+          onNext();
+        },
+        (error) => {
+          console.warn("Onboarding location permission denied or error", error);
+          setAskingLocation(false);
+          onNext();
+        },
+        { timeout: 6000 }
+      );
+    } else {
+      setAskingLocation(false);
+      onNext();
+    }
+  };
 
-    <div className="w-full space-y-5">
-      <div className="bg-white rounded-3xl p-6 border border-[#E4E0D8] shadow-sm">
-        <p className="text-[#6B6560] text-sm leading-relaxed mb-5">
-          I'll learn what you own, what you love, and how you're feeling — then suggest exactly what to do with your time, every single day.
-        </p>
-        <PrimaryBtn onClick={onNext}>Let's get started →</PrimaryBtn>
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-between max-w-lg mx-auto px-6 py-14">
+      <div className="w-full space-y-1">
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#8A8580]">✦ Welcome home</p>
+        <h1 className="text-5xl font-serif italic text-[#1A1815] leading-tight">
+          Hello,<br />
+          <span>{username}.</span>
+        </h1>
       </div>
-      <blockquote className="text-center text-[10px] font-medium uppercase tracking-widest text-[#8A8580] italic">
-        "Every journey begins with a single, intentional step."
-      </blockquote>
+
+      <div className="flex flex-col items-center gap-2">
+        <img
+          src="/gozi-mascot.png"
+          alt="Gozi mascot"
+          className="w-44 h-44 object-cover drop-shadow-md"
+        />
+        <p className="text-xs text-[#8A8580] font-medium tracking-wide">Gozi</p>
+      </div>
+
+      <div className="w-full space-y-5">
+        <div className="bg-white rounded-3xl p-6 border border-[#E4E0D8] shadow-sm">
+          <p className="text-[#6B6560] text-sm leading-relaxed mb-4">
+            I'll learn what you own, what you love, and how you're feeling, then suggest exactly what to do with your time, every single day.
+          </p>
+          <p className="text-[#8A8580] text-xs leading-relaxed mb-5 border-t border-[#E4E0D8]/60 pt-4">
+            📍 Gozi uses your location to suggest spontaneous nearby activities, walking trails, and events. We will request location permission.
+          </p>
+          <PrimaryBtn onClick={handleStart} disabled={askingLocation}>
+            {askingLocation ? (
+              <span className="flex items-center justify-center gap-2">
+                <LoaderIcon className="w-4 h-4 animate-spin" /> Enabling location...
+              </span>
+            ) : "Let's get started →"}
+          </PrimaryBtn>
+        </div>
+        <blockquote className="text-center text-[10px] font-medium uppercase tracking-widest text-[#8A8580] italic">
+          "Every journey begins with a single, intentional step."
+        </blockquote>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ListSelectStep: React.FC<{
   stepNum: number; totalSteps: number; title: string; subtitle: string;
   options: { id: string; label: string; description: string; icon: string }[];
   selected: string[]; onToggle: (id: string) => void;
   onNext: () => void; onBack: () => void;
-}> = ({ stepNum, totalSteps, title, subtitle, options, selected, onToggle, onNext, onBack }) => (
+  showScrollIndicator?: boolean;
+}> = ({ stepNum, totalSteps, title, subtitle, options, selected, onToggle, onNext, onBack, showScrollIndicator }) => (
   <Shell stepNum={stepNum} totalSteps={totalSteps} onBack={onBack} onSkip={onNext}>
     <div className="mb-6">
-      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">{subtitle}</p>
+      {subtitle && <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">{subtitle}</p>}
       <h2 className="text-4xl font-serif italic text-[#1A1815] leading-tight">{title}</h2>
     </div>
 
-    <div className="flex-1 pb-6">
+    <div className="flex-1 pb-6 relative">
       <div className="grid grid-cols-2 gap-3">
         {options.map(opt => (
           <OptionCard key={opt.id} icon={opt.icon} label={opt.label} description={opt.description} selected={selected.includes(opt.id)} onToggle={() => onToggle(opt.id)} />
         ))}
       </div>
+      {showScrollIndicator && (
+        <div className="fixed right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 opacity-40 animate-pulse pointer-events-none">
+          <div className="w-1 h-8 bg-[#C8C4BC] rounded-full" />
+          <svg className="w-4 h-4 text-[#8A8580]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+        </div>
+      )}
     </div>
 
     <div className="pt-2 space-y-3">
@@ -375,20 +417,20 @@ const PaywallStep: React.FC<{ onNext: () => void; onBack: () => void }> = ({ onN
   <Shell onBack={onBack}>
     <div className="mb-8">
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">Before you begin</p>
-      <h2 className="text-4xl font-serif italic text-[#1A1815] leading-tight">The heart of<br />your space.</h2>
+      <h2 className="text-3xl font-serif italic text-[#1A1815] leading-tight whitespace-nowrap">The heart of your space.</h2>
     </div>
 
     <div className="flex-1 space-y-4 pb-6">
       <p className="text-sm text-[#6B6560] leading-relaxed">
-        Like the best apps you use every day, Life Companion offers a free experience — and a deeper one for those who want it.
+        Start your 7-day free trial and experience everything Gozi has to offer. No commitment, cancel anytime.
       </p>
 
       {/* Free tier */}
       <div className="bg-white rounded-3xl border border-[#E4E0D8] p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="font-bold text-sm text-[#1A1815]">Free</p>
-            <p className="text-[10px] text-[#8A8580] uppercase tracking-widest">Always included</p>
+            <p className="font-bold text-sm text-[#1A1815]">7-Day Free Trial</p>
+            <p className="text-[10px] text-[#8A8580] uppercase tracking-widest">Full access, no card needed</p>
           </div>
           <span className="text-xl">🌱</span>
         </div>
@@ -429,9 +471,9 @@ const PaywallStep: React.FC<{ onNext: () => void; onBack: () => void }> = ({ onN
     </div>
 
     <div className="pt-4 space-y-3">
-      <SageBtn onClick={onNext}>Upgrade to Premium →</SageBtn>
-      <GhostBtn onClick={onNext}>Continue for Free</GhostBtn>
-      <p className="text-center text-[10px] text-[#8A8580]">You can upgrade anytime from your profile.</p>
+      <SageBtn onClick={onNext}>Start Free Trial →</SageBtn>
+      <GhostBtn onClick={onNext}>Continue with Limited Access</GhostBtn>
+      <p className="text-center text-[10px] text-[#8A8580]">7-day trial, then $4.99/mo. Cancel anytime.</p>
     </div>
   </Shell>
 );
@@ -445,7 +487,7 @@ const InventoryStep: React.FC<{ data: OnboardingData; updateData: (p: Partial<On
 
     <div className="flex-1 pb-6">
       <p className="text-sm text-[#6B6560] leading-relaxed mb-5">
-        Tell us anything else about your world — gadgets, instruments, pets, equipment. The more you share, the more personal your suggestions become.
+        Tell us anything else about your world: gadgets, instruments, pets, equipment. The more you share, the more personal your suggestions become.
       </p>
       <textarea
         value={data.inventoryText}
@@ -455,7 +497,7 @@ const InventoryStep: React.FC<{ data: OnboardingData; updateData: (p: Partial<On
       />
       <div className="mt-5 bg-[#EBF2ED] rounded-2xl p-4 border border-[#C8DDD0]">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#4A7B5C] mb-1">✦ Why this matters</p>
-        <p className="text-xs text-[#4A7B5C] leading-relaxed">Your inventory helps us suggest activities that are actually possible with what you own — not generic ideas, but things tailored specifically to your life.</p>
+        <p className="text-xs text-[#4A7B5C] leading-relaxed">Your inventory helps us suggest activities that are actually possible with what you own, not generic ideas, but things tailored specifically to your life.</p>
       </div>
     </div>
 

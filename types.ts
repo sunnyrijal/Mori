@@ -33,13 +33,13 @@ export enum HabitFrequency {
 }
 
 export enum InventoryCategory {
-    FoodAndCooking = "Food & Cooking",
-    Beverages = "Beverages",
     HobbiesAndCrafts = "Hobbies & Crafts",
     Entertainment = "Entertainment",
     HealthAndFitness = "Health & Fitness",
     WorkAndProductivity = "Work & Productivity",
     SocialActivities = "Social Activities",
+    FoodAndCooking = "Food & Cooking",
+    Beverages = "Beverages",
     ShoppingAndErrands = "Shopping & Errands",
     Other = "Other",
 }
@@ -125,6 +125,7 @@ export interface UserProfile {
     achievements: string[];
     lastSurveyDate: string | null;
     lastFetchXPDate: string | null;
+    createdAt?: string;
 }
 
 export interface HabitCompletion {
@@ -151,6 +152,7 @@ export interface InventoryItem {
     confidence: number;
     interest: InterestLevel;
     description: string;
+    shareWithFriends?: boolean;
 }
 
 export interface ProactiveSuggestion {
@@ -214,6 +216,13 @@ export interface SurveyQuestion {
     options: string[];
 }
 
+export interface WeeklyReflection {
+    id: string;
+    user_id: string;
+    responses: Record<string, string>;
+    created_at: string;
+}
+
 export interface WeeklySurvey {
     id: string;
     questions: SurveyQuestion[];
@@ -235,7 +244,7 @@ export interface AppState {
     aspirations: Aspiration[];
     chatHistory: ChatMessage[];
     currentMood: Mood | null;
-    socialContext: SocialContext | null;
+    socialContext: SocialContext | string | null;
     currentTimeAvailability: TimeAvailability | null;
     isDateNightMode: boolean;
     inventorySuggestions: Suggestion[];
@@ -260,6 +269,8 @@ export interface AppState {
     suggestionsFetchCount: number;
     dailyFetchCount: number;
     dailyFetchCountDate: string | null;
+    weeklyReflections?: WeeklyReflection[];
+    friendInventoryContext?: 'my' | 'their' | 'both';
 }
 
 export interface OnboardingData {

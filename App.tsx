@@ -30,7 +30,7 @@ const MOOD_THEMES: Record<string, { accent: string; overlay: string; darkOverlay
 const DEFAULT_THEME = { accent: '#000000', overlay: 'rgba(0,0,0,0)', darkOverlay: 'rgba(0,0,0,0)' };
 
 function App() {
-  const { state, actions } = useAppStore();
+  const { state, users, actions } = useAppStore();
   const { userProfile, activeScreen, hobbyToDetail, currentMood } = state;
   const [showPrivacy, setShowPrivacy] = useState(false);
 
@@ -53,7 +53,14 @@ function App() {
       actions.upgradeSubscription('Premium');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []);
+
+    const addFriendUser = params.get('add_friend');
+    if (addFriendUser && userProfile.isLoggedIn) {
+      actions.addFriend(addFriendUser);
+      alert(`Connected with ${addFriendUser}!`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [userProfile.isLoggedIn, actions]);
 
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -65,23 +72,26 @@ function App() {
        }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((res: any) => {
+      const session = res?.data?.session;
       if (session?.user) {
         if (Capacitor.isNativePlatform()) {
             Purchases.logIn({ appUserID: session.user.id }).catch(console.error);
         }
-        actions.login(session.user.user_metadata.full_name || session.user.email);
+        actions.login(session.user.id);
       }
+    }).catch((err: any) => {
+      console.error("App: getSession error", err);
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session?.user) {
         if (Capacitor.isNativePlatform()) {
             Purchases.logIn({ appUserID: session.user.id }).catch(console.error);
         }
-        actions.login(session.user.user_metadata.full_name || session.user.email);
+        actions.login(session.user.id);
         fetch('/api/auth/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -116,7 +126,7 @@ function App() {
       case 'Today':   return <TodayScreen state={state} actions={actions} />;
       case 'Journey': return <JourneyScreen state={state} actions={actions} />;
       case 'Chat':    return <ChatScreen state={state} actions={actions} />;
-      case 'Profile': return <ProfileScreen state={state} actions={actions} onShowPrivacy={() => setShowPrivacy(true)} />;
+      case 'Profile': return <ProfileScreen state={state} users={users} actions={actions} onShowPrivacy={() => setShowPrivacy(true)} />;
       default:        return <TodayScreen state={state} actions={actions} />;
     }
   };
@@ -150,7 +160,7 @@ function App() {
         <div className="flex justify-around h-16">
           <NavButton label="Today"     icon={<HomeIcon />}           isActive={activeScreen === 'Today'}   onClick={() => actions.setActiveScreen('Today')}   />
           <NavButton label="Inventory" icon={<PackageIcon />}        isActive={activeScreen === 'Journey'} onClick={() => actions.setActiveScreen('Journey')} />
-          <NavButton label="Chat"      icon={<MessageSquareIcon />}  isActive={activeScreen === 'Chat'}    onClick={() => actions.setActiveScreen('Chat')}    />
+          <NavButton id="nav-chat-btn" label="Chat"      icon={<MessageSquareIcon />}  isActive={activeScreen === 'Chat'}    onClick={() => actions.setActiveScreen('Chat')}    />
           <NavButton label="Profile"   icon={<UserIcon />}           isActive={activeScreen === 'Profile'} onClick={() => actions.setActiveScreen('Profile')} />
         </div>
       </nav>
@@ -158,8 +168,9 @@ function App() {
   );
 }
 
-const NavButton: React.FC<{ label: string; icon: React.ReactNode; isActive: boolean; onClick: () => void }> = ({ label, icon, isActive, onClick }) => (
+const NavButton: React.FC<{ id?: string; label: string; icon: React.ReactNode; isActive: boolean; onClick: () => void }> = ({ id, label, icon, isActive, onClick }) => (
   <button
+    id={id}
     onClick={onClick}
     className={`flex flex-col items-center justify-center w-full text-[9px] uppercase tracking-widest font-bold transition-all duration-200 ${isActive ? 'text-ios-accent scale-105' : 'text-ios-muted hover:text-ios-accent'}`}
   >

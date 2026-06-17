@@ -21,15 +21,15 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
       {[
         {
           title: 'What we collect',
-          body: `Life Companion collects only what you choose to share during onboarding and use of the app: your name or Google account name, the items in your inventory (streaming services, games, gear, hobbies), your selected mood and time preferences, and activity suggestions you interact with. We do not collect location data, contacts, or any data from third-party apps.`,
+          body: `Gozi collects only what you choose to share during onboarding and use of the app: your name or Google account name, the items in your inventory (streaming services, games, gear, hobbies), your selected mood and time preferences, and activity suggestions you interact with. We do not collect location data, contacts, or any data from third-party apps.`,
         },
         {
           title: 'How your data is stored',
-          body: `All personal data — your inventory, goals, hobbies, chat history, and preferences — is stored locally on your device using browser storage. It is not uploaded to our servers and is not accessible to us. Clearing your browser data will permanently delete your Life Companion data. We recommend noting your key inventory items before clearing your browser.`,
+          body: `All personal data (your inventory, goals, hobbies, chat history, and preferences) is stored locally on your device using browser storage. It is not uploaded to our servers and is not accessible to us. Clearing your browser data will permanently delete your Gozi data. We recommend noting your key inventory items before clearing your browser.`,
         },
         {
           title: 'Payments',
-          body: `Premium subscriptions are processed securely by Stripe, a PCI-compliant payment processor. Life Companion never sees or stores your payment card details. Stripe's privacy policy applies to all payment transactions. Your subscription status (free or premium) is stored in our database solely to determine which features you can access.`,
+          body: `Premium subscriptions are processed securely by Stripe, a PCI-compliant payment processor. Gozi never sees or stores your payment card details. Stripe's privacy policy applies to all payment transactions. Your subscription status (free or premium) is stored in our database solely to determine which features you can access.`,
         },
         {
           title: 'AI and suggestions',
@@ -37,7 +37,7 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
         },
         {
           title: 'Third-party services',
-          body: `Music suggestion links open Spotify in a new tab via deep links — no personal data is shared with Spotify by Life Companion and no Spotify account connection is required. Google Sign-In is optional; if used, only your display name is read.`,
+          body: `Music suggestion links open Spotify in a new tab via deep links. No personal data is shared with Spotify by Gozi and no Spotify account connection is required. Google Sign-In is optional; if used, only your display name is read.`,
         },
         {
           title: 'Data retention',
@@ -49,7 +49,7 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
         },
         {
           title: 'Contact',
-          body: `If you have any questions about this privacy policy or how we handle your data, please contact us at: privacy@lifecompanion.app`,
+          body: `If you have any questions about this privacy policy or how we handle your data, please contact us at: privacy@gozi.app`,
         },
       ].map(section => (
         <div key={section.title} className="mb-7">
@@ -59,7 +59,7 @@ export const PrivacyPolicyScreen: React.FC<PrivacyPolicyScreenProps> = ({ onBack
       ))}
 
       <div className="mt-10 pt-6 border-t border-ios-border">
-        <p className="text-[10px] text-ios-muted text-center">Life Companion · Built with care · {new Date().getFullYear()}</p>
+        <p className="text-[10px] text-ios-muted text-center">Gozi · Built with care · {new Date().getFullYear()}</p>
       </div>
     </div>
   </div>

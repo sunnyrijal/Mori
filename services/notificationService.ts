@@ -55,7 +55,7 @@ export const onForegroundMessage = async (callback: (payload: any) => void) => {
     onMessage(messaging, callback);
 };
 
-export const showLocalNotification = (title: string, body: string, icon = '/logo.svg') => {
+export const showLocalNotification = (title: string, body: string, icon = '/gozi-mascot.png') => {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     new Notification(title, { body, icon });
 };

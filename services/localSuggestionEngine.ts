@@ -599,3 +599,39 @@ export function generateLocalSuggestions(
   const contextSuggestions = (moodMap[socialContext] || LOCAL_ACTIVITIES.default[socialContext]) as Suggestion[] | undefined;
   return contextSuggestions || [];
 }
+
+const SPONTANEOUS_GAMES: Suggestion[] = [
+  {
+    title: 'Wordle',
+    description: 'Guess the 5-letter word in six tries. The perfect 5-minute mental workout.',
+    category: 'Spontaneous Game',
+    link: 'https://www.nytimes.com/games/wordle/index.html',
+    icon: 'Game'
+  },
+  {
+    title: 'MapTap Geoguessr',
+    description: 'Test your spatial skills! Tap and guess where in the world you are.',
+    category: 'Spontaneous Game',
+    link: 'https://worldgeoguessr.com/',
+    icon: 'Game'
+  },
+  {
+    title: 'Sudoku Challenge',
+    description: 'Train your brain with a quick logic puzzle. Fill in numbers 1-9.',
+    category: 'Spontaneous Game',
+    link: 'https://sudoku.com/',
+    icon: 'Game'
+  },
+  {
+    title: 'Name That Tune',
+    description: 'Test your music trivia. Guess the song and artist from the intro clips.',
+    category: 'Spontaneous Game',
+    link: 'https://songl.io/',
+    icon: 'Game'
+  }
+];
+
+export function getRandomSpontaneousGame(): Suggestion {
+  const randomIndex = Math.floor(Math.random() * SPONTANEOUS_GAMES.length);
+  return SPONTANEOUS_GAMES[randomIndex];
+}

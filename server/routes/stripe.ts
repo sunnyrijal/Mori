@@ -59,7 +59,9 @@ router.post('/checkout', async (req, res) => {
       customerId = customer.id;
     }
 
-    const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const baseUrl = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : (req.headers.origin || 'http://localhost:5001');
     const session = await stripeService.createCheckoutSession(
       customerId,
       priceId,
@@ -82,7 +84,9 @@ router.post('/portal', async (req, res) => {
       return res.status(400).json({ error: 'No billing account found' });
     }
 
-    const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    const baseUrl = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : (req.headers.origin || 'http://localhost:5001');
     const portalSession = await stripeService.createCustomerPortalSession(
       user.stripeCustomerId,
       baseUrl

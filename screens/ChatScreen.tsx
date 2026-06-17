@@ -36,7 +36,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
     <div className="h-screen flex flex-col bg-ios-bg dark:bg-gray-950 transition-colors duration-300">
         <header className="p-4 border-b border-ios-border dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between">
             <div className="w-8" /> {/* Spacer */}
-            <h1 className="text-[9px] font-bold uppercase tracking-[0.3em] text-ios-muted">AI Companion</h1>
+            <h1 className="text-[9px] font-bold uppercase tracking-[0.3em] text-ios-muted">Gozi</h1>
             <div className="w-6 h-6 rounded-full bg-ios-accent/10 flex items-center justify-center">
                 <div className="w-1.5 h-1.5 rounded-full bg-ios-accent animate-pulse" />
             </div>
@@ -62,7 +62,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
                 )}
               </div>
               <span className="text-[9px] font-bold uppercase tracking-widest text-ios-muted mt-2 px-1">
-                {msg.sender === 'user' ? 'You' : 'Companion'}
+                {msg.sender === 'user' ? 'You' : 'Gozi'}
               </span>
             </div>
           ))}

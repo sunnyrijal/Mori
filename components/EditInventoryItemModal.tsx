@@ -85,6 +85,18 @@ export const EditInventoryItemModal: React.FC<EditInventoryItemModalProps> = ({ 
                 </select>
             </div>
           </div>
+          <div className="flex items-center justify-between p-3.5 bg-ios-bg dark:bg-gray-800 border border-ios-border dark:border-gray-700 rounded-2xl mt-2">
+            <span className="text-sm font-medium text-ios-text dark:text-white">Share with Friends & Partner</span>
+            <button
+              type="button"
+              onClick={() => setEditedItem(prev => prev ? { ...prev, shareWithFriends: prev.shareWithFriends === false ? true : false } : null)}
+              className={`w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${editedItem.shareWithFriends !== false ? 'bg-ios-accent' : 'bg-ios-muted/30'}`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform duration-200 ${editedItem.shareWithFriends !== false ? 'translate-x-6' : 'translate-x-0'}`}
+              />
+            </button>
+          </div>
         </div>
         <div className="flex flex-col gap-2 mt-8">
           <button 
