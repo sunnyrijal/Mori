@@ -139,11 +139,11 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ username, onComplete }
             <div
                 ref={cardRef}
                 style={popupStyle}
-                className="bg-white/95 dark:bg-gray-800/95 backdrop-blur border border-ios-border/40 dark:border-gray-700 shadow-2xl rounded-3xl p-5 transition-all duration-300 flex flex-col pointer-events-auto"
+                className="bg-white/95  backdrop-blur border border-ios-border/40  shadow-2xl rounded-3xl p-5 transition-all duration-300 flex flex-col pointer-events-auto"
             >
                 {/* Header with mascot avatar */}
                 <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-ios-bg dark:bg-gray-700 border border-ios-border dark:border-gray-600 flex-shrink-0 flex items-center justify-center p-1.5 shadow-sm">
+                    <div className="w-12 h-12 rounded-full bg-ios-bg  border border-ios-border  flex-shrink-0 flex items-center justify-center p-1.5 shadow-sm">
                         <img 
                             src="/gozi-mascot.png" 
                             alt="Gozi" 
@@ -152,12 +152,12 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ username, onComplete }
                     </div>
                     <div>
                         <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-ios-accent">Gozi Guide</p>
-                        <h3 className="text-base font-serif italic text-ios-text dark:text-white leading-tight">{step.title}</h3>
+                        <h3 className="text-base font-serif italic text-ios-text  leading-tight">{step.title}</h3>
                     </div>
                 </div>
 
                 {/* Narrative content */}
-                <p className="text-xs text-ios-muted dark:text-gray-300 leading-relaxed mb-5">
+                <p className="text-xs text-ios-muted  leading-relaxed mb-5">
                     {currentStepIndex === 0 ? `Hi ${username}! Let's set your context first. ${step.text}` : step.text}
                 </p>
 
@@ -171,7 +171,7 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ username, onComplete }
                                 className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
                                     idx === currentStepIndex 
                                         ? 'bg-ios-accent w-4' 
-                                        : 'bg-ios-border dark:bg-gray-600'
+                                        : 'bg-ios-border '
                                 }`}
                             />
                         ))}
@@ -182,14 +182,14 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ username, onComplete }
                         {currentStepIndex < TOUR_STEPS.length - 1 && (
                             <button
                                 onClick={handleSkip}
-                                className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-ios-muted hover:text-ios-text dark:hover:text-white transition-colors"
+                                className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-ios-muted hover:text-ios-text :text-white transition-colors"
                             >
                                 Skip
                             </button>
                         )}
                         <button
                             onClick={handleNext}
-                            className="px-4 py-2 bg-ios-accent hover:bg-black/80 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-[9px] font-bold uppercase tracking-widest rounded-xl transition-colors shadow-sm"
+                            className="px-4 py-2 bg-ios-accent hover:bg-black/80  :bg-blue-700 text-white text-[9px] font-bold uppercase tracking-widest rounded-xl transition-colors shadow-sm"
                         >
                             {currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'}
                         </button>

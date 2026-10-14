@@ -33,12 +33,12 @@ export const HobbyDetailModal: React.FC<HobbyDetailModalProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-ios-card dark:bg-gray-900 shadow-2xl w-full max-w-lg p-8 relative border border-ios-border dark:border-gray-800 rounded-[2rem] animate-slide-up">
+      <div className="bg-ios-card  shadow-2xl w-full max-w-lg p-8 relative border border-ios-border  rounded-[2rem] animate-slide-up">
         <button onClick={onClose} className="absolute top-4 right-4 text-ios-muted hover:text-ios-text transition-colors">
           <XIcon className="w-4 h-4" />
         </button>
         <div className="space-y-3 mb-6">
-            <h2 className="text-2xl font-serif italic text-ios-text dark:text-white leading-tight">Tell us more about "{hobby}"</h2>
+            <h2 className="text-2xl font-serif italic text-ios-text  leading-tight">Tell us more about "{hobby}"</h2>
             <p className="text-xs text-ios-muted leading-relaxed">
               Providing more details helps us give you much better suggestions.
             </p>
@@ -47,7 +47,7 @@ export const HobbyDetailModal: React.FC<HobbyDetailModalProps> = ({ isOpen, onCl
           value={details}
           onChange={(e) => setDetails(e.target.value)}
           rows={4}
-          className="w-full bg-ios-bg dark:bg-gray-800 border border-ios-border dark:border-gray-700 p-4 focus:outline-none focus:ring-1 focus:ring-ios-accent text-ios-text dark:text-white rounded-2xl resize-none text-sm placeholder-ios-muted/50 shadow-inner"
+          className="w-full bg-ios-bg  border border-ios-border  p-4 focus:outline-none focus:ring-1 focus:ring-ios-accent text-ios-text  rounded-2xl resize-none text-sm placeholder-ios-muted/50 shadow-inner"
           placeholder={placeholder}
         />
         <div className="flex flex-col gap-2 mt-6">
@@ -61,7 +61,7 @@ export const HobbyDetailModal: React.FC<HobbyDetailModalProps> = ({ isOpen, onCl
           </button>
           <button
             onClick={onClose}
-            className="w-full py-3.5 bg-ios-bg dark:bg-gray-800 text-ios-muted font-bold text-[10px] uppercase tracking-[0.3em] hover:bg-ios-border dark:hover:bg-gray-700 transition-all rounded-2xl"
+            className="w-full py-3.5 bg-ios-bg  text-ios-muted font-bold text-[10px] uppercase tracking-[0.3em] hover:bg-ios-border :bg-gray-700 transition-all rounded-2xl"
           >
             Skip
           </button>

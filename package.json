@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
-    "dev:client": "vite",
+    "dev:client": "vite --host",
     "dev:server": "tsx watch server/index.ts",
     "build": "vite build",
     "preview": "vite preview",
@@ -16,6 +16,8 @@
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/core": "^8.3.1",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.2.0",
     "@google/genai": "^1.27.0",
     "@revenuecat/purchases-capacitor": "^13.0.1",
     "@supabase/supabase-js": "^2.104.0",

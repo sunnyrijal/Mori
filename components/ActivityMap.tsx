@@ -150,19 +150,19 @@ export const ActivityMap: React.FC<ActivityMapProps> = ({ latitude, longitude })
                 
                 if (marker.category === 'walk') {
                     emoji = '🌳';
-                    bgClass = 'bg-green-600 dark:bg-green-700';
+                    bgClass = 'bg-green-600 ';
                 } else if (marker.category === 'cafe') {
                     emoji = '☕';
-                    bgClass = 'bg-amber-500 dark:bg-amber-600';
+                    bgClass = 'bg-amber-500 ';
                 } else if (marker.category === 'social') {
                     emoji = '👥';
-                    bgClass = 'bg-purple-600 dark:bg-purple-700';
+                    bgClass = 'bg-purple-600 ';
                 }
 
                 // Beautiful standard HTML divIcon with shadow and scale effect
                 const activityIcon = L.divIcon({
                     className: 'leaflet-activity-marker',
-                    html: `<div class="w-8 h-8 ${bgClass} rounded-full border-2 border-white dark:border-gray-800 shadow-md flex items-center justify-center text-sm transform hover:scale-110 hover:shadow-lg transition-all cursor-pointer">${emoji}</div>`,
+                    html: `<div class="w-8 h-8 ${bgClass} rounded-full border-2 border-white  shadow-md flex items-center justify-center text-sm transform hover:scale-110 hover:shadow-lg transition-all cursor-pointer">${emoji}</div>`,
                     iconSize: [32, 32],
                     iconAnchor: [16, 16]
                 });
@@ -174,12 +174,12 @@ export const ActivityMap: React.FC<ActivityMapProps> = ({ latitude, longitude })
                 const popupContent = `
                     <div class="p-1 font-sans text-ios-text max-w-[220px]">
                         <div class="flex items-center justify-between gap-2 mb-1">
-                            <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ios-bg dark:bg-gray-700 text-ios-muted border border-ios-border dark:border-gray-600">${marker.category.toUpperCase()}</span>
+                            <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-ios-bg  text-ios-muted border border-ios-border ">${marker.category.toUpperCase()}</span>
                             <span class="text-[9px] font-medium text-ios-muted">${distanceText} away</span>
                         </div>
-                        <h4 class="font-serif italic font-bold text-sm text-[#1A1815] dark:text-white leading-tight mb-1.5">${marker.title}</h4>
-                        <p class="text-xs text-ios-muted dark:text-gray-300 leading-relaxed mb-2.5">${marker.description}</p>
-                        <a href="https://www.google.com/maps/search/?api=1&query=${marker.latitude},${marker.longitude}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-full px-3 py-2 bg-[#1A1815] hover:bg-black/80 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-xl text-[9px] font-bold uppercase tracking-[0.15em] transition-colors no-underline">
+                        <h4 class="font-serif italic font-bold text-sm text-[#1A1815]  leading-tight mb-1.5">${marker.title}</h4>
+                        <p class="text-xs text-ios-muted  leading-relaxed mb-2.5">${marker.description}</p>
+                        <a href="https://www.google.com/maps/search/?api=1&query=${marker.latitude},${marker.longitude}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-full px-3 py-2 bg-[#1A1815] hover:bg-black/80  :bg-blue-700 text-white rounded-xl text-[9px] font-bold uppercase tracking-[0.15em] transition-colors no-underline">
                             Get Directions →
                         </a>
                     </div>
@@ -208,16 +208,16 @@ export const ActivityMap: React.FC<ActivityMapProps> = ({ latitude, longitude })
 
     if (error) {
         return (
-            <div className="w-full h-80 bg-ios-card dark:bg-gray-800 rounded-3xl border border-ios-border dark:border-gray-700 flex flex-col items-center justify-center p-6 text-center text-red-500">
+            <div className="w-full h-80 bg-ios-card  rounded-3xl border border-ios-border  flex flex-col items-center justify-center p-6 text-center text-red-500">
                 <p className="text-xs font-bold uppercase tracking-widest mb-2">Map Error</p>
-                <p className="text-sm text-ios-muted dark:text-gray-400 leading-relaxed">{error}</p>
+                <p className="text-sm text-ios-muted  leading-relaxed">{error}</p>
             </div>
         );
     }
 
     if (!leafletLoaded || loading) {
         return (
-            <div className="w-full h-80 bg-ios-card dark:bg-gray-800 rounded-3xl border border-ios-border dark:border-gray-700 flex flex-col items-center justify-center text-ios-muted">
+            <div className="w-full h-80 bg-ios-card  rounded-3xl border border-ios-border  flex flex-col items-center justify-center text-ios-muted">
                 <LoaderIcon className="w-8 h-8 mb-4 text-ios-accent" />
                 <p className="text-[10px] uppercase tracking-widest font-bold">Curation in progress...</p>
             </div>
@@ -226,7 +226,7 @@ export const ActivityMap: React.FC<ActivityMapProps> = ({ latitude, longitude })
 
     return (
         <div className="space-y-3">
-            <div className="w-full h-80 rounded-3xl border border-ios-border dark:border-gray-700 overflow-hidden shadow-sm relative z-10">
+            <div className="w-full h-80 rounded-3xl border border-ios-border  overflow-hidden shadow-sm relative z-10">
                 <div ref={mapContainerRef} className="w-full h-full" />
             </div>
             

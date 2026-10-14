@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS public.preferences (
     partner_username TEXT,
     energy_defaults TEXT,
     hobbies JSONB DEFAULT '[]'::jsonb,
+    digital_apps JSONB DEFAULT '[]'::jsonb,
+    saved_cures JSONB DEFAULT '[]'::jsonb,
+    daily_refresh_history JSONB DEFAULT '[]'::jsonb,
+    completed_suggestions JSONB DEFAULT '[]'::jsonb,
     data_migrated BOOLEAN DEFAULT FALSE
 );
 

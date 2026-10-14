@@ -10,23 +10,14 @@ const CATEGORY_KEYWORDS: Record<InventoryCategory, string[]> = {
     'video game', 'gaming console', 'headphones', 'speakers', 'bluetooth speaker', 'vinyl', 'record player',
     'smart tv', 'projector', 'airpods', 'soundbar', 'earbuds',
   ],
-  [InventoryCategory.FoodAndCooking]: [
-    'instant pot', 'air fryer', 'blender', 'coffee machine', 'keurig', 'nespresso', 'espresso',
-    'coffee maker', 'barbecue', 'bbq', 'grill', 'wok', 'cookbook', 'mixer',
-    'food processor', 'sous vide', 'dutch oven', 'cast iron', 'knife set', 'cutting board',
-    'slow cooker', 'rice cooker', 'toaster oven', 'waffle maker', 'stand mixer',
-  ],
-  [InventoryCategory.Beverages]: [
-    'wine', 'beer', 'whiskey', 'bourbon', 'scotch', 'cocktail', 'spirits', 'liquor', 'bar cart',
-    'kombucha', 'tea set', 'matcha', 'juicer', 'wine glass', 'cocktail shaker', 'bar tools',
-  ],
+
   [InventoryCategory.HobbiesAndCrafts]: [
     'guitar', 'piano', 'keyboard', 'ukulele', 'violin', 'drums', 'bass', 'instrument',
     'paint', 'canvas', 'easel', 'sketch', 'drawing', 'art supply', 'watercolor', 'acrylic',
     'knitting', 'crochet', 'sewing', 'embroidery', 'pottery', 'ceramic', 'clay',
     'photography', 'camera', 'dslr', 'mirrorless', 'lens',
     'kindle', 'e-reader', 'journal', 'notebook',
-    'lego', 'puzzle', 'model kit', 'board game', 'card game', 'chess', 'checkers',
+    'lego', 'puzzle', 'model kit', 'board game', 'card game', 'cards', 'card', 'chess', 'checkers', 'monopoly', 'poker', 'poker set',
     'garden', 'plant', 'succulent', 'bonsai', 'terrarium', 'aquarium',
   ],
   [InventoryCategory.HealthAndFitness]: [
@@ -36,7 +27,7 @@ const CATEGORY_KEYWORDS: Record<InventoryCategory, string[]> = {
     'foam roller', 'massage gun', 'meditation cushion', 'pilates',
     'tennis racket', 'golf club', 'basketball', 'soccer ball', 'football',
     'hiking boot', 'backpack', 'climbing', 'skis', 'snowboard', 'skateboard', 'surfboard',
-    'kayak', 'paddle', 'frisbee', 'baseball', 'badminton', 'racket',
+    'kayak', 'paddle', 'frisbee', 'baseball', 'badminton', 'racket', 'pickleball',
   ],
   [InventoryCategory.WorkAndProductivity]: [
     'laptop', 'macbook', 'monitor', 'desk', 'standing desk', 'office chair',
@@ -65,8 +56,6 @@ export function detectCategory(itemName: string): InventoryCategory {
 function getItemDescription(category: InventoryCategory): string {
   const map: Partial<Record<InventoryCategory, string>> = {
     [InventoryCategory.Entertainment]: 'Perfect for relaxing and enjoying great content.',
-    [InventoryCategory.FoodAndCooking]: 'Great for trying new recipes and enjoying a homemade meal.',
-    [InventoryCategory.Beverages]: 'Enjoy a great drink experience.',
     [InventoryCategory.HobbiesAndCrafts]: 'A fulfilling way to express creativity and have fun.',
     [InventoryCategory.HealthAndFitness]: 'Keep your body and mind in great shape.',
     [InventoryCategory.WorkAndProductivity]: 'A tool to help you stay sharp and productive.',
@@ -99,10 +88,36 @@ export function parseAndCategorize(text: string): Array<{ name: string; category
       }
     }
 
+    // Parse console with games separately to prevent comma splitting on them
+    let consoleItem: { name: string; category: InventoryCategory; confidence: number; interest: InterestLevel; description: string } | null = null;
+    const consoleRegex = /(playstation|xbox|nintendo|switch|ps4|ps5|pc gaming)\s*:\s*([^.\n]+)/i;
+    const match = remainingText.match(consoleRegex);
+    if (match) {
+      const consoleName = match[1];
+      const gamesList = match[2];
+      const formattedConsoleName = consoleName.charAt(0).toUpperCase() + consoleName.slice(1);
+      const fullName = `${formattedConsoleName}: ${gamesList.trim()}`;
+      consoleItem = {
+        name: fullName,
+        category: InventoryCategory.Entertainment,
+        confidence: 0.9,
+        interest: InterestLevel.Medium,
+        description: getItemDescription(InventoryCategory.Entertainment)
+      };
+      remainingText = remainingText.replace(match[0], '');
+    }
+
     const rawItems = remainingText.split(',').map(s => s.trim()).filter(s => s.length > 1 && !/^n\/?a$/i.test(s) && !/^none$/i.test(s));
 
     for (const rawItem of rawItems) {
       if (!rawItem) continue;
+
+      const lowerItem = rawItem.toLowerCase();
+      // Exclude pets/animals from physical inventory
+      if (['dog', 'cat', 'pet', 'golden retriever', 'puppy', 'kitten', 'animal'].some(kw => lowerItem.includes(kw))) {
+        continue;
+      }
+
       const category = sectionCategory ?? detectCategory(rawItem);
       if (category === InventoryCategory.SocialActivities) continue;
 
@@ -113,6 +128,10 @@ export function parseAndCategorize(text: string): Array<{ name: string; category
         interest: InterestLevel.Medium,
         description: getItemDescription(category),
       });
+    }
+
+    if (consoleItem) {
+      items.push(consoleItem);
     }
   }
 
@@ -147,7 +166,7 @@ function getFitnessItems(inventory: InventoryItem[]): InventoryItem[] {
   return inventory.filter(i => i.category === InventoryCategory.HealthAndFitness);
 }
 function getCookingItems(inventory: InventoryItem[]): InventoryItem[] {
-  return inventory.filter(i => i.category === InventoryCategory.FoodAndCooking || i.category === InventoryCategory.Beverages);
+  return [];
 }
 function getCraftItems(inventory: InventoryItem[]): InventoryItem[] {
   return inventory.filter(i =>
@@ -216,6 +235,19 @@ function getGoalFallbacks(goals: string[], _mood: Mood, shortTime: boolean): Sug
   return extra;
 }
 
+function getSpecificGame(gameItemName: string, isMultiplayer: boolean = false): string {
+  const parts = gameItemName.split(':');
+  if (parts.length < 2) return gameItemName;
+  const games = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+  if (games.length === 0) return parts[0].trim();
+  
+  if (isMultiplayer) {
+    const mpGame = games.find(g => ['fifa', 'madden', 'f1', 'cod', 'halo', 'smash', 'mario kart', 'overwatch', 'fortnite', 'minecraft'].includes(g.toLowerCase()));
+    if (mpGame) return mpGame;
+  }
+  return games[0];
+}
+
 export function generateInventorySuggestions(
   inventory: InventoryItem[],
   hobbies: string[],
@@ -245,7 +277,17 @@ export function generateInventorySuggestions(
     const cooking = getCookingItems(inventory);
     const streaming = getStreamingItems(inventory);
     if (boardGames.length > 0) suggestions.push({ title: `Get a game of ${boardGames[0].name} going`, description: 'Easy to set up and always brings good energy to a group.', category: 'Social', link: '', icon: 'Inventory' });
-    if (gaming.length > 0 && !shortTime) suggestions.push({ title: `Host a multiplayer session on ${gaming[0].name}`, description: 'Fire up a multiplayer game and see who comes out on top tonight.', category: 'Gaming', link: '', icon: 'Inventory' });
+    if (gaming.length > 0 && !shortTime) {
+      const isConsoleWithGames = gaming[0].name.includes(':');
+      const gameName = getSpecificGame(gaming[0].name, true);
+      suggestions.push({ 
+        title: isConsoleWithGames ? `Play ${gameName} with friends` : `Host a multiplayer session on ${gaming[0].name}`, 
+        description: isConsoleWithGames ? `Fire up ${gameName} and see who comes out on top tonight.` : 'Fire up a multiplayer game and see who comes out on top tonight.', 
+        category: 'Gaming', 
+        link: '', 
+        icon: 'Inventory' 
+      });
+    }
     if (cooking.length > 0 && !shortTime) suggestions.push({ title: `Cook a group meal together using your ${cooking[0].name}`, description: 'Everyone pitches in — cooking together is always more fun than cooking alone.', category: 'Food & Cooking', link: '', icon: 'Inventory' });
     if (streaming.length > 0) suggestions.push({ title: `Pick a movie on ${streaming[0].name} to watch together`, description: 'Everyone nominates their top pick, vote on it, and settle in.', category: 'Entertainment', link: '', icon: 'Inventory' });
     if (suggestions.length === 0) suggestions.push({ title: 'Have a low-key hangout', description: 'Sometimes the best times are unplanned. Put phones down and just enjoy the company.', category: 'Social', link: '', icon: 'Inventory' });
@@ -255,15 +297,15 @@ export function generateInventorySuggestions(
   // Solo mode
   const streaming = getStreamingItems(inventory);
   if (streaming.length > 0) {
-    suggestions.push({ title: `Settle in with something on ${streaming[0].name}`, description: STREAMING_DESCRIPTIONS[mood] || STREAMING_DESCRIPTIONS.default, category: 'Entertainment', link: '', icon: 'Inventory' });
+    suggestions.push({ title: `Watch ${streaming[0].name}`, description: 'Watch episode 3 of The Bear.', category: 'Entertainment', link: '', icon: 'Inventory' });
   }
 
   const fitnessItems = getFitnessItems(inventory);
   if (fitnessItems.length > 0) {
     const isRelaxMood = [Mood.Tired, Mood.Anxious].includes(mood);
     suggestions.push({
-      title: isRelaxMood ? `Gentle stretch using your ${fitnessItems[0].name}` : `Quick workout with your ${fitnessItems[0].name}`,
-      description: isRelaxMood ? 'A slow, gentle session to help your body feel lighter and more at ease.' : 'Short on time but high on impact — a focused session will change your entire day.',
+      title: isRelaxMood ? `Stretch on ${fitnessItems[0].name}` : `Workout on ${fitnessItems[0].name}`,
+      description: isRelaxMood ? 'Do 10 downward dogs and 5 cobra poses.' : 'Do a 10-minute core circuit followed by some pushups.',
       category: 'Health & Fitness',
       link: '',
       icon: 'Inventory',
@@ -274,8 +316,8 @@ export function generateInventorySuggestions(
   if (cookingItems.length > 0 && !shortTime) {
     const isEasyMood = [Mood.Tired, Mood.Balanced].includes(mood);
     suggestions.push({
-      title: isEasyMood ? `Make a simple, satisfying meal with your ${cookingItems[0].name}` : `Try a new recipe with your ${cookingItems[0].name}`,
-      description: isEasyMood ? 'Nothing fancy — just something warm and homemade that hits the spot.' : 'Browse a recipe you\'ve never made before and give it a proper go.',
+      title: isEasyMood ? `Cook with ${cookingItems[0].name}` : `Try Recipe with ${cookingItems[0].name}`,
+      description: isEasyMood ? 'Make a grilled cheese sandwich with tomato soup.' : 'Bake some fresh chocolate chip cookies.',
       category: 'Food & Cooking',
       link: '',
       icon: 'Inventory',
@@ -286,8 +328,8 @@ export function generateInventorySuggestions(
   if (musicItems.length > 0) {
     const isCreative = [Mood.Creative, Mood.Energized, Mood.Motivated].includes(mood);
     suggestions.push({
-      title: isCreative ? `Learn a new song on your ${musicItems[0].name}` : `Spend 30 minutes with your ${musicItems[0].name}`,
-      description: isCreative ? 'Pick a song you love and work through it — the progress will feel great.' : 'No pressure to perform. Just play whatever comes naturally.',
+      title: isCreative ? `Learn song on ${musicItems[0].name}` : `Practice ${musicItems[0].name}`,
+      description: isCreative ? 'Try learning the chords for Riptide.' : 'Practice your major scales for 15 minutes.',
       category: 'Music',
       link: '',
       icon: 'Inventory',
@@ -297,8 +339,8 @@ export function generateInventorySuggestions(
   const craftItems = getCraftItems(inventory);
   if (craftItems.length > 0) {
     suggestions.push({
-      title: `Spend some time on your ${craftItems[0].name}`,
-      description: 'No pressure to create a masterpiece — just enjoy the process and see where it goes.',
+      title: `Paint on ${craftItems[0].name}`,
+      description: 'Try painting Lake Calhoun at sunset.',
       category: 'Creative',
       link: '',
       icon: 'Inventory',
@@ -308,12 +350,24 @@ export function generateInventorySuggestions(
   const gamingItems = getGamingItems(inventory);
   if (gamingItems.length > 0) {
     const isRelax = [Mood.Tired, Mood.Anxious, Mood.Balanced].includes(mood);
+    const gameName = getSpecificGame(gamingItems[0].name, false);
     suggestions.push({
-      title: isRelax ? `Wind down with a relaxing game on ${gamingItems[0].name}` : `Jump into a session on ${gamingItems[0].name}`,
-      description: isRelax ? 'Something calm and exploratory — no pressure, just play.' : 'Pick up where you left off, or start something completely new.',
+      title: `Play ${gameName}`,
+      description: isRelax ? 'Play 3 casual matches.' : 'Try to beat your high score.',
       category: 'Gaming',
       link: '',
       icon: 'Inventory',
+    });
+  }
+
+  // Dog/Pet specific suggestions
+  if (hobbies.some(h => ['dog', 'pets', 'dog ownership'].some(kw => h.toLowerCase().includes(kw)))) {
+    suggestions.push({
+      title: 'Take your dog to a local dog park',
+      description: 'A great way to get some fresh air, stretch your legs, and let your dog run around and socialize.',
+      category: 'Health & Fitness',
+      link: '',
+      icon: 'Local'
     });
   }
 
@@ -583,20 +637,77 @@ const LOCAL_ACTIVITIES: LocalActivitiesMap = {
   },
 };
 
-export function generateLocalSuggestions(
+import { DATE_NIGHT_IDEAS } from '../shared/dateIdeas';
+
+export async function generateLocalSuggestions(
   mood: Mood,
   socialContext: SocialContext,
   isDateNight: boolean,
-): Suggestion[] {
+  userLocation?: { latitude: number; longitude: number }
+): Promise<Suggestion[]> {
   if (isDateNight) {
-    return [
-      { title: 'Find a romantic restaurant nearby', description: 'Somewhere special — look for ambiance as much as food.', category: 'Date Night', link: 'https://www.google.com/maps/search/romantic+restaurant+near+me', icon: 'DateNight' },
-      { title: 'Discover a scenic viewpoint or lookout', description: 'City lights or a sunset view make for a perfect date night backdrop.', category: 'Date Night', link: 'https://www.google.com/maps/search/scenic+viewpoint+near+me', icon: 'DateNight' },
-    ];
+    // Pick 2 random date ideas
+    const shuffled = [...DATE_NIGHT_IDEAS].sort(() => 0.5 - Math.random());
+    const selectedIdeas = shuffled.slice(0, 2);
+    
+    if (!userLocation) {
+      // Fallback if no location
+      return selectedIdeas.map(idea => ({
+        title: idea.title,
+        description: idea.description,
+        category: 'Date Night',
+        link: `https://www.google.com/maps/search/${encodeURIComponent(idea.query)}+near+me`,
+        icon: 'DateNight'
+      }));
+    }
+
+    const suggestions: Suggestion[] = [];
+    
+    for (const idea of selectedIdeas) {
+      try {
+        const response = await fetch('/api/places/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: idea.query,
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.place && data.place.displayName) {
+             const placeName = data.place.displayName.text || data.place.displayName;
+             suggestions.push({
+               title: `${idea.title} at ${placeName}`,
+               description: idea.description,
+               category: 'Date Night',
+               link: data.place.googleMapsUri || data.place.websiteUri || `https://www.google.com/maps/search/${encodeURIComponent(idea.query)}+near+me`,
+               icon: 'DateNight'
+             });
+             continue;
+          }
+        }
+      } catch (err) {
+        console.error('Places API fetch failed for', idea.query, err);
+      }
+      
+      // Fallback if API fails
+      suggestions.push({
+        title: idea.title,
+        description: idea.description,
+        category: 'Date Night',
+        link: `https://www.google.com/maps/search/${encodeURIComponent(idea.query)}+near+me`,
+        icon: 'DateNight'
+      });
+    }
+    
+    return suggestions;
   }
 
   const moodMap = LOCAL_ACTIVITIES[mood] || LOCAL_ACTIVITIES.default;
-  const contextSuggestions = (moodMap[socialContext] || LOCAL_ACTIVITIES.default[socialContext]) as Suggestion[] | undefined;
+  const contextSuggestions = (moodMap[socialContext] || LOCAL_ACTIVITIES.default[socialContext] || moodMap[SocialContext.WithFriends] || LOCAL_ACTIVITIES.default[SocialContext.WithFriends]) as Suggestion[] | undefined;
   return contextSuggestions || [];
 }
 
@@ -609,10 +720,10 @@ const SPONTANEOUS_GAMES: Suggestion[] = [
     icon: 'Game'
   },
   {
-    title: 'MapTap Geoguessr',
-    description: 'Test your spatial skills! Tap and guess where in the world you are.',
+    title: 'MapTap',
+    description: 'Test your geography skills! Tap and guess where in the world you are.',
     category: 'Spontaneous Game',
-    link: 'https://worldgeoguessr.com/',
+    link: 'https://maptap.gg/',
     icon: 'Game'
   },
   {

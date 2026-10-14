@@ -32,16 +32,16 @@ export const WeeklySurveyModal: React.FC<WeeklySurveyModalProps> = ({ isOpen, on
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-ios-card dark:bg-gray-900 shadow-2xl w-full max-w-lg p-8 relative border border-ios-border dark:border-gray-800 rounded-[2rem] animate-slide-up">
+      <div className="bg-ios-card  shadow-2xl w-full max-w-lg p-8 relative border border-ios-border  rounded-[2rem] animate-slide-up">
         <button onClick={onClose} className="absolute top-4 right-4 text-ios-muted hover:text-ios-text transition-colors">
           <XIcon className="w-4 h-4" />
         </button>
         <div className="text-center space-y-1 mb-6">
-            <h2 className="text-2xl font-serif italic text-ios-text dark:text-white leading-tight">Weekly Check-in</h2>
+            <h2 className="text-2xl font-serif italic text-ios-text  leading-tight">Weekly Check-in</h2>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-ios-muted">Help us get to know you better</p>
         </div>
 
-        <div className="w-full bg-ios-bg dark:bg-gray-800 h-1 mb-8 rounded-full overflow-hidden">
+        <div className="w-full bg-ios-bg  h-1 mb-8 rounded-full overflow-hidden">
           <div 
             className="bg-ios-accent h-full transition-all duration-700 ease-out rounded-full" 
             style={{ width: `${((currentStep + 1) / survey.questions.length) * 100}%` }}
@@ -50,13 +50,13 @@ export const WeeklySurveyModal: React.FC<WeeklySurveyModalProps> = ({ isOpen, on
 
         {currentQuestion && (
              <div className="min-h-[260px] flex flex-col">
-                <p className="text-lg font-medium text-ios-text dark:text-gray-200 text-center mb-8 leading-relaxed">{currentQuestion.question}</p>
+                <p className="text-lg font-medium text-ios-text  text-center mb-8 leading-relaxed">{currentQuestion.question}</p>
                 <div className="grid grid-cols-1 gap-3">
                     {currentQuestion.options.map(option => (
                         <button
                             key={option}
                             onClick={() => handleAnswerSelect(currentQuestion.question, option)}
-                            className={`p-4 text-center w-full transition-all duration-300 border rounded-2xl text-[9px] font-bold uppercase tracking-widest ${answers[currentQuestion.question] === option ? 'bg-ios-accent border-ios-accent text-white shadow-lg shadow-ios-accent/20 scale-[1.02]' : 'bg-ios-bg border-ios-border text-ios-muted hover:border-ios-muted/50 dark:bg-gray-800 dark:border-gray-700'}`}
+                            className={`p-4 text-center w-full transition-all duration-300 border rounded-2xl text-[9px] font-bold uppercase tracking-widest ${answers[currentQuestion.question] === option ? 'bg-ios-accent border-ios-accent text-white shadow-lg shadow-ios-accent/20 scale-[1.02]' : 'bg-ios-bg border-ios-border text-ios-muted hover:border-ios-muted/50  '}`}
                         >
                             {option}
                         </button>

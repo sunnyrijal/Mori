@@ -66,7 +66,7 @@ const singleSuggestionSchema = {
     required: ["title", "subtitle", "reason", "category", "duration_minutes"]
 };
 
-const buildSocialContextPrompt = (userState: AppState, _sharedContext: SharedContext, reflections: any[] = []): string => {
+const buildSocialContextPrompt = (userState: AppState, sharedContext: SharedContext, socialContext: SocialContext, reflections: any[] = []): string => {
     // LAYER 1 — WHO THEY ARE
     const createdAtStr = userState.userProfile.createdAt;
     const isFirstWeek = createdAtStr && (new Date().getTime() - new Date(createdAtStr).getTime() < 7 * 24 * 60 * 60 * 1000);
@@ -77,8 +77,32 @@ const buildSocialContextPrompt = (userState: AppState, _sharedContext: SharedCon
     if (userState.userProfile.partnerUsername) {
         layer1 += `- Partner name: ${userState.userProfile.partnerUsername}\n`;
     }
+    
+    // Family & Pets context
+    const family = userState.userProfile.family;
+    if (family) {
+        if (family.hasKids && family.kidsCount) {
+            let kidStr = `- Family: Has ${family.kidsCount} kid(s).`;
+            if (family.kidsAges) {
+                kidStr += ` Ages: ${family.kidsAges}.`;
+            }
+            layer1 += `${kidStr}\n`;
+        } else if (family.hasKids) {
+            layer1 += `- Family: Has kids.\n`;
+        }
+        if (family.hasPets && family.pets && family.pets.length > 0) {
+            layer1 += `- Pets: Has ${family.pets.join(', ')}.\n`;
+        } else if (family.hasPets) {
+            layer1 += `- Pets: Has pets.\n`;
+        }
+    }
+
     layer1 += `- Energy defaults: ${userState.userProfile.preferences?.energyDefaults || 'flexible'}\n`;
     layer1 += `- Usage stage: ${usageStage}\n`;
+
+    // LAYER 1.5 — HOBBIES
+    let layer1_5 = `LAYER 1.5 — HOBBIES\n`;
+    layer1_5 += `- Hobbies and interests: ${userState.hobbies && userState.hobbies.length > 0 ? userState.hobbies.join(', ') : 'None listed'}\n`;
 
     // LAYER 2 — WHAT THEY OWN
     const groupedInv = userState.inventory.reduce((acc, item) => {
@@ -94,31 +118,35 @@ const buildSocialContextPrompt = (userState: AppState, _sharedContext: SharedCon
             layer2 += `- ${cat}: ${items.join(', ')}\n`;
         }
     }
+    if (userState.digitalApps && userState.digitalApps.length > 0) {
+        layer2 += `- Digital Apps: ${userState.digitalApps.join(', ')}\n`;
+        layer2 += `CRITICAL: If relevant to the mood, heavily prioritize suggesting activities that use the user's Digital Apps.\n`;
+    }
 
-    // LAYER 3 — THEIR TASTE PROFILE
     let layer3 = ``;
-    if (reflections.length >= 2) {
-        const enjoyed: string[] = [];
-        const disliked: string[] = [];
+    if (reflections.length > 0) {
+        const highlyRated: string[] = [];
+        const poorlyRated: string[] = [];
         for (const r of reflections) {
             if (r.responses) {
                 for (const [title, rating] of Object.entries(r.responses)) {
                     if (typeof rating === 'number' || !isNaN(Number(rating))) {
                         const num = Number(rating);
-                        if (num >= 4) enjoyed.push(title);
-                        if (num <= 2) disliked.push(title);
+                        if (num >= 6) highlyRated.push(title);
+                        if (num < 6) poorlyRated.push(title);
                     } else if (typeof rating === 'string') {
                         // fallback if strings were used in responses
-                        if (rating.toLowerCase().includes('enjoy') || rating.toLowerCase().includes('great')) enjoyed.push(title);
+                        if (rating.toLowerCase().includes('enjoy') || rating.toLowerCase().includes('great')) highlyRated.push(title);
+                        else poorlyRated.push(title);
                     }
                 }
             }
         }
-        layer3 = `LAYER 3 — THEIR TASTE PROFILE (learned from past reflections):\n`;
-        layer3 += `- Activities this person genuinely enjoyed: ${enjoyed.length > 0 ? enjoyed.join(', ') : 'none explicitly rated yet'}\n`;
-        layer3 += `- Activities that did not land well: ${disliked.length > 0 ? disliked.join(', ') : 'none explicitly rated yet'}\n`;
-        layer3 += `- Current streak: they have completed ${reflections.length} weekly reflections, meaning suggestions should feel increasingly personalized.\n`;
-        layer3 += `Use this to bias suggestions toward what has worked before.\n`;
+        layer3 = `[USER PAST FEEDBACK AND REFLECTIONS]\n`;
+        layer3 += `The user has provided explicit ratings out of 10 for past suggestions:\n`;
+        layer3 += `- Highly Rated (6/10 or higher): ${highlyRated.length > 0 ? highlyRated.join(', ') : 'None yet'}\n`;
+        layer3 += `- Poorly Rated (Less than 6/10): ${poorlyRated.length > 0 ? poorlyRated.join(', ') : 'None yet'}\n`;
+        layer3 += `CRITICAL INSTRUCTION: You MUST heavily weight your suggestions away from activity types or genres similar to the 'Poorly Rated' items. Do NOT suggest anything that resembles items rated < 6/10.\n`;
     }
 
     // LAYER 4 — RIGHT NOW
@@ -142,14 +170,16 @@ const buildSocialContextPrompt = (userState: AppState, _sharedContext: SharedCon
     layer4 += `- Day of week: ${dayOfWeek}\n`;
 
     const instructionBlock = `Based on everything above, suggest ONE specific activity for right now. Rules:
-- Only use what they already own. Never suggest buying anything.
-- Be specific. Not 'watch something on Netflix' — say 'Watch Severance on Apple TV+, it's perfect for low-energy evenings and you own it.'
+- The 'title' (header) MUST be extremely short (3-4 words max) and actionable. (e.g., 'Watch Severance', 'Stretch on Yoga Mat', 'Practice Ukulele'). Do NOT use generic headers like 'Settle in with something on Netflix'.
+- The 'subtitle' MUST be incredibly specific. Do NOT give them multiple options like 'continue watching or try something new'. Pick ONE specific, concrete thing and tell them to do it. (e.g., 'Do 10 downward dogs and 5 cobra poses', 'Try learning the chords for Riptide', 'Start watching Shogun on Hulu'). The more options you give, the lazier users become—so give NO options, just one specific directive.
+- Only use what they already own or hobbies they like. Never suggest buying anything.
+- If the user owns a gaming console or platform listed with games, suggest playing one specific game based on social context.
 - Match the energy level precisely. Low energy = passive. High energy = engaged.
-- If it's a two-player game and they're solo, skip it.
-- Write in second person, warm and calm tone. 3 sentences max.
-- End with one sentence explaining why this fits them right now specifically.`;
+- Write in second person, warm and calm tone. 
+- The 'reason' field should be a single sentence explaining why this fits their current time, mood, and context perfectly.
+${socialContext === SocialContext.WithFamily ? "- CRITICAL INSTRUCTION: Since the user is 'With Family', the suggestion MUST explicitly involve all family members (e.g., play a small soccer game, watch a family show together, play Monopoly if owned). Do NOT suggest an activity only one person can do." : ""}`;
 
-    return `${layer1}\n${layer2}\n${layer3 ? layer3 + '\n' : ''}${layer4}\n\n${instructionBlock}`;
+    return `${layer1}\n${layer1_5}\n${layer2}\n${layer3 ? layer3 + '\n' : ''}${layer4}\n\n${instructionBlock}`;
 };
 
 const DAILY_REFRESH_QUESTIONS = [
@@ -337,7 +367,14 @@ export const geminiService = {
         try {
             const response = await generateWithRetry({
                 model: 'gemini-2.5-flash',
-                contents: `Analyze the following text which lists a user's items, hobbies, or subscriptions. Categorize each distinct item. Here's the text: "${text}"`,
+                contents: `Analyze the following text which lists a user's items, hobbies, or subscriptions. Extract and categorize each distinct item. 
+IMPORTANT RULES:
+1. If a console/platform is listed with multiple games (e.g., 'PlayStation: Fifa, F1, Madden'), do NOT extract them as separate items. Instead, extract it as a single combined item 'PlayStation: Fifa, F1, Madden' under the 'Entertainment' category. Do not split console games by commas.
+2. Items like 'stretch band', 'protein shake', 'creatine', 'vitamin d', 'pickleball' MUST be categorized as 'Health & Fitness'.
+3. Board games (like 'Monopoly'), card sets (like 'poker set'), and musical instruments (like 'ukulele') MUST be categorized as 'Games & Crafts'.
+4. If an item is food or a drink but related to health/workout, prioritize 'Health & Fitness'.
+5. Do NOT extract any pets, animals, or items related to pet ownership (e.g., 'dog', 'cat', 'pet', 'golden retriever') as inventory items.
+Here's the text: "${text}"`,
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: inventorySchema,
@@ -354,7 +391,7 @@ export const geminiService = {
         if (PAUSE_GEMINI) {
             return generateInventorySuggestions(userState.inventory, userState.hobbies, mood, socialContext, timeAvailability, isDateNight, userState.goals || []);
         }
-        const socialPrompt = buildSocialContextPrompt(userState, sharedContext, userState.weeklyReflections);
+        const socialPrompt = buildSocialContextPrompt(userState, sharedContext, socialContext, userState.weeklyReflections);
         const prompt = `You are an expert activity suggestion AI. Based on the user's records:\n\n${socialPrompt}`;
         try {
             const response = await generateWithRetry({
@@ -376,11 +413,11 @@ export const geminiService = {
         }
     },
 
-    async getExternalContentSuggestions(mood: Mood, _socialContext: SocialContext, userState: AppState, sharedContext: SharedContext, timeAvailability: TimeAvailability | null, isDateNight: boolean): Promise<Suggestion[]> {
+    async getExternalContentSuggestions(mood: Mood, socialContext: SocialContext, userState: AppState, sharedContext: SharedContext, timeAvailability: TimeAvailability | null, isDateNight: boolean): Promise<Suggestion[]> {
         if (PAUSE_GEMINI) {
             return generateExternalSuggestions(mood);
         }
-        const socialPrompt = buildSocialContextPrompt(userState, sharedContext, userState.weeklyReflections);
+        const socialPrompt = buildSocialContextPrompt(userState, sharedContext, socialContext, userState.weeklyReflections);
         const prompt = `You are a media discovery AI. Based on the user's records, suggest ONE digital content activity (podcast, video, or book) for someone who is ${mood} with ${timeAvailability} available.\n\n${socialPrompt}`;
         try {
             const response = await generateWithRetry({
@@ -432,11 +469,11 @@ export const geminiService = {
 
     async getLocalActivitySuggestions(mood: Mood, socialContext: SocialContext, userLocation: { latitude: number; longitude: number }, userState: AppState, sharedContext: SharedContext, _timeAvailability: TimeAvailability | null, isDateNight: boolean): Promise<Suggestion[]> {
         if (PAUSE_GEMINI) {
-            const list = generateLocalSuggestions(mood, socialContext, isDateNight);
+            const list = await generateLocalSuggestions(mood, socialContext, isDateNight, userLocation);
             return [...list, getRandomSpontaneousGame()];
         }
         try {
-            const socialPrompt = buildSocialContextPrompt(userState, sharedContext, userState.weeklyReflections);
+            const socialPrompt = buildSocialContextPrompt(userState, sharedContext, socialContext, userState.weeklyReflections);
             const response = await generateWithRetry({
                 model: 'gemini-2.5-flash',
                 contents: `Find ONE specific local activity for someone feeling ${mood} in a '${socialContext}' context.\n${socialPrompt}`,
@@ -470,7 +507,7 @@ export const geminiService = {
             return [suggestion, getRandomSpontaneousGame()];
         } catch (error) {
             console.error("Error getting local activity suggestions:", error);
-            const list = generateLocalSuggestions(mood, socialContext, isDateNight);
+            const list = await generateLocalSuggestions(mood, socialContext, isDateNight, userLocation);
             return [...list, getRandomSpontaneousGame()];
         }
     },
@@ -480,14 +517,24 @@ export const geminiService = {
             const inventoryList = inventory.map(i => i.name).join(', ') || 'nothing added yet';
             const hobbyList = hobbies.join(', ') || 'none listed yet';
             return {
-                responseText: `Hi, I am Gozi! Based on your inventory (${inventoryList}) and hobbies (${hobbyList}), I can help you find the perfect activity. What kind of vibe are you going for — something active, creative, relaxing, or social?`,
+                responseText: `Hi, I am Gozi! I can help you find the perfect activity based on what you have. What kind of vibe are you going for — something active, creative, relaxing, or social?`,
                 suggestions: ["Something relaxing", "Something active", "Something creative", "Something social"],
                 newInventoryItems: [],
                 newHobbies: [],
             };
         }
         const chatHistory = history.map(m => `${m.sender}: ${m.text}`).join('\n');
-        const prompt = `You are Gozi, a supportive AI companion. Help the user decide on an activity based on their inventory and hobbies.\n\nMood: ${mood}\nInventory: ${inventory.map(i => i.name).join(', ')}\nHobbies: ${hobbies.join(', ')}\n\nConversation:\n${chatHistory}\n\nRespond with JSON: { "responseText": "...", "suggestions": ["...", "..."], "newInventoryItems": [], "newHobbies": [] }`;
+        const prompt = `You are Gozi, a supportive AI companion. Help the user decide on an activity based on their inventory and hobbies.
+IMPORTANT: Do NOT list all the user's inventory or hobbies in your response. Keep your message brief, natural, and conversational. Ask them what kind of vibe they are feeling instead.
+
+Mood: ${mood}
+Inventory: ${inventory.map(i => i.name).join(', ')}
+Hobbies: ${hobbies.join(', ')}
+
+Conversation:
+${chatHistory}
+
+Respond with JSON: { "responseText": "...", "suggestions": ["...", "..."], "newInventoryItems": [], "newHobbies": [] }`;
         try {
             const response = await generateWithRetry({
                 model: 'gemini-2.5-flash',
@@ -599,6 +646,90 @@ export const geminiService = {
         } catch (error) {
             console.error("Error processing hobby details:", error);
             return { newInventoryItems: [] };
+        }
+    },
+
+    async getTrendingActivities(city: string, mood: Mood, season: string, dayOfWeek: string): Promise<Suggestion[]> {
+        if (PAUSE_GEMINI) {
+            return [{
+                title: "Evening Walk",
+                description: `Perfect for a ${mood} ${dayOfWeek} evening.`,
+                category: "Trending",
+                icon: "Local"
+            }];
+        }
+        try {
+            const response = await generateWithRetry({
+                model: 'gemini-2.5-flash',
+                contents: `Generate 2 editorial-style curated activities for ${city} during ${season} on a ${dayOfWeek} for someone feeling ${mood}. 
+Focus on seasonal or timely themes (e.g., "Cozy indoor reading" for a rainy winter Tuesday, or "Sunset park picnic" for a summer Friday). 
+DO NOT use fake user counts or pretend these are popular based on data. Present them as editorial curation.`,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.ARRAY,
+                        items: singleSuggestionSchema
+                    }
+                }
+            });
+            const data = JSON.parse(response.text || '[]');
+            return data.map((d: any) => ({
+                title: d.title || "Curated idea",
+                description: `${d.subtitle || ''}\n\n${d.reason || ''}`.trim(),
+                category: "Editorial Picks",
+                icon: 'Local'
+            }));
+        } catch (error) {
+            console.error("Error getting trending activities:", error);
+            return [];
+        }
+    },
+
+    async parseHomescreenScreenshot(base64Image: string, mimeType: string): Promise<string[]> {
+        console.log("parseHomescreenScreenshot called with mimeType:", mimeType);
+        if (PAUSE_GEMINI) {
+            console.log("PAUSE_GEMINI is true, returning empty array.");
+            return [];
+        }
+        try {
+            const prompt = `Identify all productivity, health, mindfulness, reading, and lifestyle apps visible in this screenshot. Ignore generic system apps like Settings, Phone, Camera, or Calculator. Return the result strictly as a JSON array of strings containing the app names. Example: ["Notion", "Strava", "Day One"]`;
+            
+            console.log("Sending screenshot to Gemini 2.5 Flash...");
+            const response = await generateWithRetry({
+                model: 'gemini-2.5-flash',
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            { inlineData: { data: base64Image, mimeType: mimeType } },
+                            { text: prompt }
+                        ]
+                    }
+                ],
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING }
+                    }
+                }
+            });
+            
+            let text = response.text || '[]';
+            console.log("Gemini Vision response:", text);
+            // Remove markdown code blocks if Gemini added them
+            if (text.startsWith('```json')) {
+                text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            } else if (text.startsWith('```')) {
+                text = text.replace(/```/g, '').trim();
+            }
+            
+            const apps = JSON.parse(text);
+            console.log("Parsed apps:", apps);
+            return Array.isArray(apps) ? apps : [];
+        } catch (error) {
+            console.error("Error parsing screenshot:", error);
+            return [];
         }
     },
 

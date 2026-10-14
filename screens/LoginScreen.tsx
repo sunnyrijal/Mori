@@ -55,27 +55,27 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ios-bg dark:bg-gray-950 px-6 transition-colors duration-300 relative overflow-hidden font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-ios-bg  px-6 transition-colors duration-300 relative overflow-hidden font-sans">
       <div className="w-full max-w-md relative z-10 animate-fade-in">
         <div className="text-center mb-8 space-y-3">
             <div className="w-24 h-24 mx-auto flex items-center justify-center">
                 <img src="/gozi-mascot.png" alt="Gozi" className="w-20 h-20 object-contain drop-shadow-md" />
             </div>
             <div className="space-y-1">
-                <h1 className="text-4xl font-serif italic text-ios-text dark:text-white tracking-tight">Gozi</h1>
+                <h1 className="text-4xl font-serif italic text-ios-text  tracking-tight">Gozi</h1>
                 <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-ios-muted">AI-powered activity suggestions</p>
             </div>
         </div>
         
-        <div className="bg-ios-card dark:bg-gray-900 p-8 border border-ios-border dark:border-gray-800 shadow-2xl rounded-[2rem] transition-all duration-500">
+        <div className="bg-ios-card  p-8 border border-ios-border  shadow-2xl rounded-[2rem] transition-all duration-500">
           <div className="mb-8 text-center">
-             <h2 className="text-2xl font-serif italic text-ios-text dark:text-gray-100 mb-2">Welcome Back</h2>
+             <h2 className="text-2xl font-serif italic text-ios-text  mb-2">Welcome Back</h2>
              <p className="text-xs text-ios-muted tracking-wide leading-relaxed">Tell us what you own, from streaming and gear to hobbies and games, and we'll suggest exactly what to do with your time.</p>
           </div>
 
           {errorMsg && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-              <p className="text-xs text-red-600 dark:text-red-400 text-center font-medium">{errorMsg}</p>
+            <div className="mb-6 p-4 bg-red-50  border border-red-200  rounded-xl">
+              <p className="text-xs text-red-600  text-center font-medium">{errorMsg}</p>
             </div>
           )}
 
@@ -84,7 +84,7 @@ export const LoginScreen: React.FC = () => {
               type="button"
               disabled={loading}
               onClick={handleGoogleClick}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-5 bg-white dark:bg-gray-800 border border-ios-border dark:border-gray-600 rounded-2xl shadow-sm hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-all text-sm font-semibold text-gray-700 dark:text-gray-200 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-5 bg-white  border border-ios-border  rounded-2xl shadow-sm hover:shadow-md hover:bg-gray-50 :bg-gray-700 transition-all text-sm font-semibold text-gray-700  disabled:opacity-50"
             >
               <GoogleLogo />
               Continue with Google
@@ -94,7 +94,7 @@ export const LoginScreen: React.FC = () => {
               type="button"
               disabled={loading}
               onClick={handleAppleClick}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-5 bg-black dark:bg-white border border-black dark:border-white rounded-2xl shadow-sm hover:bg-gray-900 dark:hover:bg-gray-100 transition-all text-sm font-semibold text-white dark:text-black disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-5 bg-black  border border-black  rounded-2xl shadow-sm hover:bg-gray-900 :bg-gray-100 transition-all text-sm font-semibold text-white  disabled:opacity-50"
             >
               <AppleLogo />
               Continue with Apple

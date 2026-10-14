@@ -6,7 +6,7 @@ import { Purchases, PurchasesPackage } from '@revenuecat/purchases-capacitor';
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpgrade: (tier: 'Premium') => void;
+  onUpgrade: (tier: 'Best') => void;
   username?: string | null;
 }
 
@@ -89,7 +89,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onU
     try {
       const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg });
       if (typeof customerInfo.entitlements.active['Premium'] !== "undefined") {
-        onUpgrade('Premium');
+        onUpgrade('Best');
         onClose();
       }
     } catch (e: any) {
@@ -129,7 +129,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onU
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-ios-card dark:bg-gray-900 border border-ios-border dark:border-gray-800 shadow-2xl w-full max-w-md p-8 relative rounded-[2rem] animate-slide-up">
+      <div className="bg-ios-card  border border-ios-border  shadow-2xl w-full max-w-md p-8 relative rounded-[2rem] animate-slide-up">
         <button onClick={onClose} className="absolute top-4 right-4 text-ios-muted hover:text-ios-text transition-colors">
           <XIcon className="w-4 h-4" />
         </button>
@@ -138,16 +138,16 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onU
             <StarIcon className="h-6 w-6 text-ios-accent" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-3xl font-serif italic text-ios-text dark:text-white leading-tight">Elevate Your Space</h2>
+            <h2 className="text-3xl font-serif italic text-ios-text  leading-tight">Elevate Your Space</h2>
             <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-ios-muted">Premium Membership</p>
           </div>
         </div>
 
         <div className="mt-8 space-y-3">
           {premiumFeatures.map(feature => (
-            <div key={feature} className="flex items-center gap-3 p-2.5 bg-ios-bg dark:bg-gray-800 rounded-xl border border-ios-border/50">
+            <div key={feature} className="flex items-center gap-3 p-2.5 bg-ios-bg  rounded-xl border border-ios-border/50">
               <CheckCircleIcon className="w-4 h-4 text-ios-accent" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-ios-text dark:text-gray-200">{feature}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-ios-text ">{feature}</span>
             </div>
           ))}
         </div>
@@ -167,7 +167,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onU
                    className={`w-full py-4 font-bold text-[10px] uppercase tracking-[0.3em] transition-all rounded-2xl ${
                      i === 0
                        ? 'bg-ios-accent text-white hover:bg-black shadow-lg shadow-ios-accent/20'
-                       : 'bg-ios-bg dark:bg-gray-800 text-ios-muted hover:bg-ios-border dark:hover:bg-gray-700'
+                       : 'bg-ios-bg  text-ios-muted hover:bg-ios-border :bg-gray-700'
                    } disabled:opacity-60`}
                  >
                    {loadingCheckout === pkg.identifier ? 'Loading…' : `${pkg.packageType} — ${pkg.product.priceString}`}
@@ -186,7 +186,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onU
                   className={`w-full py-4 font-bold text-[10px] uppercase tracking-[0.3em] transition-all rounded-2xl ${
                     i === 0
                       ? 'bg-ios-accent text-white hover:bg-black shadow-lg shadow-ios-accent/20'
-                      : 'bg-ios-bg dark:bg-gray-800 text-ios-muted hover:bg-ios-border dark:hover:bg-gray-700'
+                      : 'bg-ios-bg  text-ios-muted hover:bg-ios-border :bg-gray-700'
                   } disabled:opacity-60`}
                 >
                   {loadingCheckout === label ? 'Loading…' : label}

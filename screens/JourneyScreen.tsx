@@ -6,6 +6,7 @@ import { PlusCircleIcon, Trash2Icon, EditIcon, SearchIcon, LoaderIcon, LockIcon,
 import { ConfirmationDialog } from '@/components/ConfirmationDialog';
 import { BulkInventoryModal } from '@/components/BulkInventoryModal';
 import { EditInventoryItemModal } from '@/components/EditInventoryItemModal';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 const getItemEmoji = (item: InventoryItem): string => {
     const name = item.name.toLowerCase();
@@ -44,10 +45,7 @@ const getItemEmoji = (item: InventoryItem): string => {
     
     // Category-based fallback
     switch (item.category) {
-        case InventoryCategory.FoodAndCooking:
-            return '🍳';
-        case InventoryCategory.Beverages:
-            return '☕';
+
         case InventoryCategory.HobbiesAndCrafts:
             return '🎨';
         case InventoryCategory.Entertainment:
@@ -59,9 +57,24 @@ const getItemEmoji = (item: InventoryItem): string => {
         case InventoryCategory.SocialActivities:
             return '🎉';
         case InventoryCategory.ShoppingAndErrands:
-            return '🛍️';
+            return '🛒';
+        case InventoryCategory.Other:
+            return '📦';
         default:
             return '📦';
+    }
+};
+
+const getCategoryDescription = (category: InventoryCategory | 'All'): string => {
+    switch (category) {
+        case InventoryCategory.Entertainment: return 'Perfect for relaxing and enjoying great content.';
+        case InventoryCategory.HobbiesAndCrafts: return 'A fulfilling way to express creativity and have fun.';
+        case InventoryCategory.HealthAndFitness: return 'Keep your body and mind in great shape.';
+        case InventoryCategory.WorkAndProductivity: return 'A tool to help you stay sharp and productive.';
+        case InventoryCategory.SocialActivities: return 'Perfect for hanging out and connecting with others.';
+        case InventoryCategory.ShoppingAndErrands: return 'Memberships, subscriptions, and daily utility.';
+        case InventoryCategory.Other: return 'Part of your personal collection.';
+        default: return '';
     }
 };
 
@@ -86,17 +99,17 @@ export const JourneyScreen: React.FC<JourneyScreenProps> = ({ state, actions }) 
     }, [state.inventory, searchQuery, selectedCategory]);
 
     const interestColor = {
-        [InterestLevel.High]: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-        [InterestLevel.Medium]: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-        [InterestLevel.Low]: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+        [InterestLevel.High]: 'bg-green-100 text-green-800  ',
+        [InterestLevel.Medium]: 'bg-yellow-100 text-yellow-800  ',
+        [InterestLevel.Low]: 'bg-red-100 text-red-800  ',
     };
 
     return (
         <div className="space-y-6 pb-24 min-h-screen animate-fade-in px-1">
             <header className="flex flex-col gap-0.5">
                 <p className="text-ios-muted text-[9px] font-bold uppercase tracking-[0.2em]">Collection</p>
-                <h1 className="text-3xl font-serif italic text-ios-text dark:text-white leading-tight">My Inventory</h1>
-                <p className="text-xs text-ios-muted dark:text-gray-400">Curate your items for better suggestions.</p>
+                <h1 className="text-2xl font-serif italic text-ios-text  leading-tight">My Inventory</h1>
+                <p className="text-xs text-ios-muted ">Curate your items for better suggestions.</p>
             </header>
 
             {/* Search & Actions */}
@@ -108,12 +121,15 @@ export const JourneyScreen: React.FC<JourneyScreenProps> = ({ state, actions }) 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search collection..." 
-                        className="w-full pl-12 pr-4 py-4 bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 rounded-2xl text-ios-text dark:text-white focus:ring-1 focus:ring-ios-accent outline-none shadow-sm transition-all"
+                        className="w-full pl-12 pr-4 py-3 bg-ios-card  border border-ios-border  rounded-2xl text-ios-text  focus:ring-1 focus:ring-ios-accent outline-none shadow-sm transition-all"
                     />
                 </div>
                 <button 
-                    onClick={() => setBulkAddOpen(true)}
-                    className="w-full py-4 bg-ios-accent hover:bg-black/80 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 shadow-sm transition-all"
+                    onClick={async () => {
+                        await Haptics.impact({ style: ImpactStyle.Light });
+                        setBulkAddOpen(true);
+                    }}
+                    className="w-full py-3 bg-ios-accent hover:bg-black/80  :bg-blue-700 text-white font-bold text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 shadow-sm transition-all active:scale-[0.98]"
                 >
                     <PlusCircleIcon className="w-4 h-4" />
                     Add Items
@@ -124,16 +140,22 @@ export const JourneyScreen: React.FC<JourneyScreenProps> = ({ state, actions }) 
             <div className="overflow-x-auto pb-2 no-scrollbar">
                 <div className="flex gap-2">
                     <button 
-                        onClick={() => setSelectedCategory('All')}
-                        className={`px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all ${selectedCategory === 'All' ? 'bg-ios-accent text-white' : 'bg-ios-card dark:bg-gray-800 text-ios-muted border border-ios-border dark:border-gray-700'}`}
+                        onClick={async () => {
+                            await Haptics.impact({ style: ImpactStyle.Light });
+                            setSelectedCategory('All');
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95 ${selectedCategory === 'All' ? 'bg-ios-accent text-white' : 'bg-ios-card  text-ios-muted border border-ios-border '}`}
                     >
                         All
                     </button>
                     {Object.values(InventoryCategory).map(cat => (
                         <button 
                             key={cat} 
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all ${selectedCategory === cat ? 'bg-ios-accent text-white' : 'bg-ios-card dark:bg-gray-800 text-ios-muted border border-ios-border dark:border-gray-700'}`}
+                            onClick={async () => {
+                                await Haptics.impact({ style: ImpactStyle.Light });
+                                setSelectedCategory(cat);
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all active:scale-95 ${selectedCategory === cat ? 'bg-ios-accent text-white' : 'bg-ios-card  text-ios-muted border border-ios-border '}`}
                         >
                             {cat}
                         </button>
@@ -142,6 +164,14 @@ export const JourneyScreen: React.FC<JourneyScreenProps> = ({ state, actions }) 
             </div>
 
             {/* Inventory List */}
+            {selectedCategory !== 'All' && (
+                <div className="mb-4 text-center px-4">
+                    <p className="text-sm font-serif italic text-ios-text ">
+                        {getCategoryDescription(selectedCategory)}
+                    </p>
+                </div>
+            )}
+            
             <div className="grid gap-4">
                 {state.isLoading && state.inventory.length === 0 ? (
                     <div className="text-center py-20">
@@ -150,47 +180,66 @@ export const JourneyScreen: React.FC<JourneyScreenProps> = ({ state, actions }) 
                     </div>
                 ) : filteredInventory.length > 0 ? (
                     filteredInventory.map(item => (
-                        <div key={item.id} className="bg-ios-card dark:bg-gray-800 p-4 rounded-2xl border border-ios-border dark:border-gray-700 shadow-sm flex gap-4 items-center group transition-all hover:shadow-md">
-                            <div className="w-14 h-14 bg-ios-bg dark:bg-gray-900 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                        <div key={item.id} className="bg-ios-card  p-3 rounded-2xl border border-ios-border  shadow-sm flex gap-3 items-center group transition-all hover:shadow-md">
+                            <div className="w-10 h-10 bg-ios-bg  rounded-xl flex items-center justify-center text-xl flex-shrink-0">
                                 {getItemEmoji(item)}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                    <h3 className="text-base font-serif italic text-ios-text dark:text-white leading-tight truncate">{item.name}</h3>
+                                    <h3 className="text-sm font-serif italic text-ios-text  leading-tight truncate">{item.name}</h3>
                                     <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-bold ${interestColor[item.interest]}`}>
                                         {item.interest}
                                     </span>
                                     {item.shareWithFriends === false && (
-                                        <span className="text-[8px] bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <span className="text-[8px] bg-red-50 text-red-600   px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1">
                                             <LockIcon className="w-2.5 h-2.5" />
                                             Private
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-xs text-ios-muted dark:text-gray-400 line-clamp-2 leading-snug mb-1">{item.description}</p>
-                                <p className="text-[8px] text-ios-accent dark:text-blue-400 font-bold uppercase tracking-[0.1em]">{item.category}</p>
+                                <p className="text-[8px] text-ios-accent  font-bold uppercase tracking-[0.1em]">{item.category}</p>
                             </div>
                             <div className="flex flex-col gap-2.5 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 <button 
-                                    onClick={() => actions.updateInventoryItem({ ...item, shareWithFriends: item.shareWithFriends === false })}
-                                    className={`p-1.5 rounded-full transition-colors ${item.shareWithFriends === false ? 'bg-red-50 dark:bg-red-900/30 text-red-500 hover:text-red-600' : 'bg-ios-bg dark:bg-gray-700 text-ios-muted hover:text-ios-accent'}`}
+                                    onClick={async () => {
+                                        await Haptics.impact({ style: ImpactStyle.Light });
+                                        actions.updateInventoryItem({ ...item, shareWithFriends: item.shareWithFriends === false });
+                                    }}
+                                    className={`p-1.5 rounded-full transition-colors active:scale-90 ${item.shareWithFriends === false ? 'bg-red-50  text-red-500 hover:text-red-600' : 'bg-ios-bg  text-ios-muted hover:text-ios-accent'}`}
                                     title={item.shareWithFriends === false ? "Private (click to share)" : "Shared with friends (click to make private)"}
                                 >
                                     {item.shareWithFriends === false ? <LockIcon className="w-3.5 h-3.5" /> : <GlobeIcon className="w-3.5 h-3.5" />}
                                 </button>
-                                <button onClick={() => setEditingItem(item)} className="p-1.5 bg-ios-bg dark:bg-gray-700 rounded-full text-ios-muted hover:text-ios-accent transition-colors">
+                                <button onClick={() => setEditingItem(item)} className="p-1.5 bg-ios-bg  rounded-full text-ios-muted hover:text-ios-accent transition-colors">
                                     <EditIcon className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => setItemToDelete(item)} className="p-1.5 bg-ios-bg dark:bg-gray-700 rounded-full text-ios-muted hover:text-red-600 transition-colors">
+                                <button onClick={() => setItemToDelete(item)} className="p-1.5 bg-ios-bg  rounded-full text-ios-muted hover:text-red-600 transition-colors">
                                     <Trash2Icon className="w-3.5 h-3.5" />
                                 </button>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-20 bg-ios-card dark:bg-gray-800 rounded-2xl border border-dashed border-ios-border dark:border-gray-700">
-                        <p className="text-ios-muted text-xs uppercase tracking-widest">No items found</p>
-                        <button onClick={() => setBulkAddOpen(true)} className="text-ios-accent dark:text-blue-400 font-bold text-[10px] uppercase tracking-widest mt-4 hover:underline">Add some items</button>
+                    <div className="text-center py-16 px-6 bg-ios-card rounded-3xl border border-dashed border-ios-border flex flex-col items-center justify-center gap-3">
+                        <div className="w-16 h-16 bg-[#F7F4EF] rounded-full flex items-center justify-center text-3xl shadow-inner mb-2">
+                            👻
+                        </div>
+                        <div>
+                            <p className="text-ios-text font-serif italic text-xl leading-tight">It's a bit empty here</p>
+                            <p className="text-[10px] text-ios-muted uppercase tracking-widest mt-2">Let's add your favorite things!</p>
+                            {selectedCategory !== 'All' && (
+                                <p className="text-[10px] text-ios-muted mt-3 text-center">{getCategoryDescription(selectedCategory)}</p>
+                            )}
+                        </div>
+                        <button 
+                            onClick={async () => {
+                                await Haptics.impact({ style: ImpactStyle.Light });
+                                setBulkAddOpen(true);
+                            }} 
+                            className="mt-4 px-6 py-3 bg-ios-accent text-white font-bold text-[10px] uppercase tracking-widest rounded-full hover:bg-black/80 transition-all active:scale-95 shadow-sm"
+                        >
+                            Add Items
+                        </button>
                     </div>
                 )}
             </div>
@@ -199,7 +248,7 @@ export const JourneyScreen: React.FC<JourneyScreenProps> = ({ state, actions }) 
             <BulkInventoryModal 
                 isOpen={isBulkAddOpen} 
                 onClose={() => setBulkAddOpen(false)} 
-                onConfirm={actions.processBulkInventory} 
+                onConfirm={(text) => actions.processBulkInventory(text, selectedCategory !== 'All' ? selectedCategory : undefined)} 
                 isLoading={state.isLoading} 
             />
             <EditInventoryItemModal 

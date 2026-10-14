@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import { OnboardingData } from '@/types';
 import { LoaderIcon } from '@/components/icons/Icons';
+import { DIGITAL_APPS_LIST } from '@/constants';
+import { geminiService } from '@/services/geminiService';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface OnboardingScreenProps {
   username: string;
@@ -9,9 +12,9 @@ interface OnboardingScreenProps {
   isLoading: boolean;
 }
 
-const STEP_LABELS = ["Welcome", "Gaming", "Games", "Streaming", "Goals", "Hobbies", "Premium", "Inventory"];
-const TOTAL_VISIBLE_STEPS = 7;
-const platformsRequiringInput = ["PC", "PlayStation", "Xbox", "Nintendo Switch", "Mobile Games"];
+const STEP_LABELS = ["Welcome", "Hobbies", "Gaming", "Games", "Streaming", "Goals", "Digital Apps", "Inventory", "Subscription"];
+const TOTAL_VISIBLE_STEPS = 8;
+const platformsRequiringInput = ["PC", "PlayStation", "Xbox", "Nintendo Switch", "Mobile Games", "Other"];
 
 const GAMING_OPTIONS = [
   { id: "PC", label: "PC", description: "Home setups & beyond", icon: "💻" },
@@ -60,8 +63,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ username, on
   const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
   const [data, setData] = useState<OnboardingData>({
-    streaming: [], games: [], gameListText: '', goals: [], hobbies: [], inventoryText: ''
+    hobbies: [], games: [], streaming: [], goals: [], inventoryText: '', gameListText: '', digitalApps: []
   });
+  const [customGamePlatform, setCustomGamePlatform] = useState("");
+  const [customStreamingPlatform, setCustomStreamingPlatform] = useState("");
 
   const goNext = () => {
     setDirection('forward');
@@ -69,7 +74,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ username, on
     setTimeout(() => {
       setStep(s => {
         let next = s + 1;
-        if (s === 1 && !data.games.some(g => platformsRequiringInput.includes(g))) next++;
+        if (s === 2 && !data.games.some(g => platformsRequiringInput.includes(g))) next++;
         return Math.min(next, STEP_LABELS.length - 1);
       });
       setIsAnimating(false);
@@ -82,7 +87,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ username, on
     setTimeout(() => {
       setStep(s => {
         let prev = s - 1;
-        if (s === 3 && !data.games.some(g => platformsRequiringInput.includes(g))) prev--;
+        if (s === 4 && !data.games.some(g => platformsRequiringInput.includes(g))) prev--;
         return Math.max(prev, 0);
       });
       setIsAnimating(false);
@@ -94,13 +99,18 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ username, on
   const renderStep = () => {
     switch (step) {
       case 0: return <WelcomeStep username={username} onNext={goNext} />;
-      case 1: return <ListSelectStep stepNum={1} totalSteps={TOTAL_VISIBLE_STEPS} title="Where do you play?" subtitle="Gaming platforms" options={GAMING_OPTIONS} selected={data.games} onToggle={id => { const next = data.games.includes(id) ? data.games.filter(g => g !== id) : [...data.games, id]; updateData({ games: next }); }} onNext={goNext} onBack={goBack} />;
-      case 2: return <GameDetailStep stepNum={2} totalSteps={TOTAL_VISIBLE_STEPS} data={data} setData={setData} onNext={goNext} onBack={goBack} />;
-      case 3: return <ListSelectStep stepNum={step === 3 && !data.games.some(g => platformsRequiringInput.includes(g)) ? 2 : 3} totalSteps={TOTAL_VISIBLE_STEPS} title="Streaming & Content" subtitle="" options={STREAMING_OPTIONS} selected={data.streaming} onToggle={id => { const next = data.streaming.includes(id) ? data.streaming.filter(s => s !== id) : [...data.streaming, id]; updateData({ streaming: next }); }} onNext={goNext} onBack={goBack} />;
-      case 4: return <ListSelectStep stepNum={4} totalSteps={TOTAL_VISIBLE_STEPS} title="What are you working towards?" subtitle="Your current goals" options={GOALS_OPTIONS} selected={data.goals} onToggle={id => { const next = data.goals.includes(id) ? data.goals.filter(g => g !== id) : [...data.goals, id]; updateData({ goals: next }); }} onNext={goNext} onBack={goBack} showScrollIndicator />;
-      case 5: return <HobbiesStep stepNum={5} totalSteps={TOTAL_VISIBLE_STEPS} data={data} updateData={updateData} onNext={goNext} onBack={goBack} />;
-      case 6: return <PaywallStep onNext={goNext} onBack={goBack} />;
-      case 7: return <InventoryStep data={data} updateData={updateData} onComplete={() => onComplete(data)} onBack={goBack} isLoading={isLoading} />;
+      case 1: return <HobbiesStep stepNum={1} totalSteps={TOTAL_VISIBLE_STEPS} data={data} updateData={updateData} onNext={goNext} onBack={goBack} />;
+      case 2: return <ListSelectStep stepNum={2} totalSteps={TOTAL_VISIBLE_STEPS} title="Where do you play?" subtitle="Gaming platforms" options={GAMING_OPTIONS} selected={data.games} onToggle={id => { const next = data.games.includes(id) ? data.games.filter(g => g !== id) : [...data.games, id]; updateData({ games: next }); }} onNext={goNext} onBack={goBack} allowCustom customValue={customGamePlatform} setCustomValue={setCustomGamePlatform} />;
+      case 3: return <GameDetailStep stepNum={3} totalSteps={TOTAL_VISIBLE_STEPS} data={data} setData={setData} onNext={goNext} onBack={goBack} />;
+      case 4: return <ListSelectStep stepNum={step === 4 && !data.games.some(g => platformsRequiringInput.includes(g)) ? 3 : 4} totalSteps={TOTAL_VISIBLE_STEPS} title="Streaming & Content" subtitle="" options={STREAMING_OPTIONS} selected={data.streaming} onToggle={id => { const next = data.streaming.includes(id) ? data.streaming.filter(s => s !== id) : [...data.streaming, id]; updateData({ streaming: next }); }} onNext={goNext} onBack={goBack} allowCustom customValue={customStreamingPlatform} setCustomValue={setCustomStreamingPlatform} />;
+      case 5: return <ListSelectStep stepNum={step === 5 && !data.games.some(g => platformsRequiringInput.includes(g)) ? 4 : 5} totalSteps={TOTAL_VISIBLE_STEPS} title="What are you working towards?" subtitle="Your current goals" options={GOALS_OPTIONS} selected={data.goals} onToggle={id => { const next = data.goals.includes(id) ? data.goals.filter(g => g !== id) : [...data.goals, id]; updateData({ goals: next }); }} onNext={goNext} onBack={goBack} showScrollIndicator />;
+      case 6: return <DigitalAppsStep stepNum={step === 6 && !data.games.some(g => platformsRequiringInput.includes(g)) ? 5 : 6} totalSteps={TOTAL_VISIBLE_STEPS} data={data} updateData={updateData} onNext={goNext} onBack={goBack} />;
+      case 7: return <InventoryStep data={data} updateData={updateData} onComplete={goNext} onBack={goBack} isLoading={false} />;
+      case 8: return <SubscriptionStep onNext={() => {
+        const finalGames = data.games.map(g => g === 'Other' && customGamePlatform.trim() ? customGamePlatform.trim() : g).filter(g => g !== 'Other' || customGamePlatform.trim() !== '');
+        const finalStreaming = data.streaming.map(s => s === 'Other' && customStreamingPlatform.trim() ? customStreamingPlatform.trim() : s).filter(s => s !== 'Other' || customStreamingPlatform.trim() !== '');
+        onComplete({ ...data, games: finalGames, streaming: finalStreaming });
+      }} isLoading={isLoading} />;
       default: return null;
     }
   };
@@ -146,9 +156,12 @@ const Shell: React.FC<{
 
 const PrimaryBtn: React.FC<{ onClick: () => void; disabled?: boolean; children: React.ReactNode; className?: string }> = ({ onClick, disabled, children, className = '' }) => (
   <button
-    onClick={onClick}
+    onClick={async () => {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+      onClick();
+    }}
     disabled={disabled}
-    className={`w-full py-4 px-8 bg-[#1A1815] text-white font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#2D2A26] transition-all disabled:opacity-30 disabled:cursor-not-allowed ${className}`}
+    className={`w-full py-4 px-8 bg-[#1A1815] text-white font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#2D2A26] active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 ${className}`}
   >
     {children}
   </button>
@@ -156,8 +169,11 @@ const PrimaryBtn: React.FC<{ onClick: () => void; disabled?: boolean; children: 
 
 const SageBtn: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
   <button
-    onClick={onClick}
-    className="w-full py-4 px-8 bg-[#4A7B5C] text-white font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#3D6A4E] transition-all"
+    onClick={async () => {
+      await Haptics.impact({ style: ImpactStyle.Heavy });
+      onClick();
+    }}
+    className="w-full py-4 px-8 bg-[#4A7B5C] text-white font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#3D6A4E] active:scale-[0.98] transition-all"
   >
     {children}
   </button>
@@ -165,8 +181,11 @@ const SageBtn: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
 
 const GhostBtn: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
   <button
-    onClick={onClick}
-    className="w-full py-4 px-8 bg-white border border-[#E4E0D8] text-[#1A1815] font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#F7F4EF] transition-all"
+    onClick={async () => {
+      await Haptics.impact({ style: ImpactStyle.Light });
+      onClick();
+    }}
+    className="w-full py-4 px-8 bg-white border border-[#E4E0D8] text-[#1A1815] font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#F7F4EF] active:scale-[0.98] transition-all"
   >
     {children}
   </button>
@@ -176,18 +195,21 @@ const GhostBtn: React.FC<{ onClick: () => void; children: React.ReactNode }> = (
 
 const OptionCard: React.FC<{ icon: string; label: string; description: string; selected: boolean; onToggle: () => void }> = ({ icon, label, description, selected, onToggle }) => (
   <button
-    onClick={onToggle}
-    className={`flex flex-col items-start gap-2 p-4 rounded-2xl border transition-all duration-200 text-left w-full ${selected ? 'bg-white border-[#1A1815] shadow-sm' : 'bg-white border-[#E4E0D8] hover:border-[#C8C4BC]'}`}
+    onClick={async () => {
+      await Haptics.impact({ style: ImpactStyle.Light });
+      onToggle();
+    }}
+    className={`flex flex-col items-start gap-2 p-4 rounded-2xl border transition-all duration-200 text-left w-full active:scale-[0.97] ${selected ? 'bg-white border-[#1A1815] shadow-md ring-1 ring-[#1A1815]' : 'bg-white border-[#E4E0D8] hover:border-[#C8C4BC]'}`}
   >
     <div className="flex items-center justify-between w-full">
-      <span className="text-2xl">{icon}</span>
-      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${selected ? 'bg-[#4A7B5C] border-[#4A7B5C]' : 'border-[#C8C4BC]'}`}>
+      <span className="text-2xl transition-transform duration-200" style={{ transform: selected ? 'scale(1.1)' : 'scale(1)' }}>{icon}</span>
+      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-300 ${selected ? 'bg-[#4A7B5C] border-[#4A7B5C] scale-110' : 'border-[#C8C4BC]'}`}>
         {selected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
       </div>
     </div>
-    <div>
+    <div className="mt-1">
       <p className="text-sm font-semibold text-[#1A1815] leading-tight">{label}</p>
-      <p className="text-[9px] text-[#8A8580] mt-0.5 uppercase tracking-wide leading-tight">{description}</p>
+      <p className="text-[9px] text-[#8A8580] mt-1 uppercase tracking-wide leading-tight">{description}</p>
     </div>
   </button>
 );
@@ -240,11 +262,12 @@ const WelcomeStep: React.FC<{ username: string; onNext: () => void }> = ({ usern
 
       <div className="w-full space-y-5">
         <div className="bg-white rounded-3xl p-6 border border-[#E4E0D8] shadow-sm">
-          <p className="text-[#6B6560] text-sm leading-relaxed mb-4">
-            I'll learn what you own, what you love, and how you're feeling, then suggest exactly what to do with your time, every single day.
+          <p className="text-[#6B6560] text-sm leading-relaxed mb-4 font-medium">
+            Let's make this app truly yours. I'll learn what you love, what you own, and how you feel—so I can suggest the perfect thing to do right now, every time.
           </p>
-          <p className="text-[#8A8580] text-xs leading-relaxed mb-5 border-t border-[#E4E0D8]/60 pt-4">
-            📍 Gozi uses your location to suggest spontaneous nearby activities, walking trails, and events. We will request location permission.
+          <p className="text-[#8A8580] text-[11px] leading-relaxed mb-5 border-t border-[#E4E0D8]/60 pt-4 flex items-start gap-2">
+            <span className="text-lg">📍</span> 
+            <span>Gozi uses your location to discover spontaneous nearby walks, hidden gems, and events. We will request location permission to show you local magic.</span>
           </p>
           <PrimaryBtn onClick={handleStart} disabled={askingLocation}>
             {askingLocation ? (
@@ -268,7 +291,10 @@ const ListSelectStep: React.FC<{
   selected: string[]; onToggle: (id: string) => void;
   onNext: () => void; onBack: () => void;
   showScrollIndicator?: boolean;
-}> = ({ stepNum, totalSteps, title, subtitle, options, selected, onToggle, onNext, onBack, showScrollIndicator }) => (
+  allowCustom?: boolean;
+  customValue?: string;
+  setCustomValue?: (val: string) => void;
+}> = ({ stepNum, totalSteps, title, subtitle, options, selected, onToggle, onNext, onBack, showScrollIndicator, allowCustom, customValue, setCustomValue }) => (
   <Shell stepNum={stepNum} totalSteps={totalSteps} onBack={onBack} onSkip={onNext}>
     <div className="mb-6">
       {subtitle && <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">{subtitle}</p>}
@@ -281,6 +307,18 @@ const ListSelectStep: React.FC<{
           <OptionCard key={opt.id} icon={opt.icon} label={opt.label} description={opt.description} selected={selected.includes(opt.id)} onToggle={() => onToggle(opt.id)} />
         ))}
       </div>
+      {allowCustom && selected.includes('Other') && setCustomValue && (
+        <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+          <input 
+            type="text" 
+            placeholder="Type your own..." 
+            value={customValue || ''}
+            onChange={(e) => setCustomValue(e.target.value)}
+            className="w-full bg-white border border-[#E4E0D8] focus:border-[#1A1815] px-4 py-3 rounded-2xl text-sm text-[#1A1815] placeholder-[#C8C4BC] focus:outline-none transition-all"
+            autoFocus
+          />
+        </div>
+      )}
       {showScrollIndicator && (
         <div className="fixed right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 opacity-40 animate-pulse pointer-events-none">
           <div className="w-1 h-8 bg-[#C8C4BC] rounded-full" />
@@ -370,8 +408,11 @@ const HobbiesStep: React.FC<{ stepNum: number; totalSteps: number; data: Onboard
           {HOBBY_TAGS.map(tag => (
             <button
               key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`px-4 py-2 rounded-full border text-[11px] font-semibold tracking-wide transition-all ${data.hobbies.includes(tag) ? 'bg-[#1A1815] border-[#1A1815] text-white' : 'bg-white border-[#E4E0D8] text-[#1A1815] hover:border-[#8A8580]'}`}
+              onClick={async () => {
+                await Haptics.impact({ style: ImpactStyle.Light });
+                toggleTag(tag);
+              }}
+              className={`px-4 py-2 rounded-full border text-[11px] font-semibold tracking-wide transition-all active:scale-[0.95] ${data.hobbies.includes(tag) ? 'bg-[#1A1815] border-[#1A1815] text-white shadow-sm' : 'bg-white border-[#E4E0D8] text-[#1A1815] hover:border-[#8A8580]'}`}
             >
               {tag}
             </button>
@@ -413,24 +454,180 @@ const HobbiesStep: React.FC<{ stepNum: number; totalSteps: number; data: Onboard
   );
 };
 
-const PaywallStep: React.FC<{ onNext: () => void; onBack: () => void }> = ({ onNext, onBack }) => (
-  <Shell onBack={onBack}>
+const DigitalAppsStep: React.FC<{ stepNum: number; totalSteps: number; data: OnboardingData; updateData: (p: Partial<OnboardingData>) => void; onNext: () => void; onBack: () => void }> = ({ stepNum, totalSteps, data, updateData, onNext, onBack }) => {
+  const [customApp, setCustomApp] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+
+  const addCustomApp = () => {
+    if (customApp.trim() && !data.digitalApps.includes(customApp.trim())) {
+      updateData({ digitalApps: [...data.digitalApps, customApp.trim()] });
+    }
+    setCustomApp('');
+  };
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') addCustomApp();
+  };
+
+  const toggleApp = (app: string) => {
+    updateData({
+      digitalApps: data.digitalApps.includes(app)
+        ? data.digitalApps.filter(a => a !== app)
+        : [...data.digitalApps, app]
+    });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsing(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Data = event.target?.result?.toString().split(',')[1];
+      if (base64Data) {
+        const parsedApps = await geminiService.parseHomescreenScreenshot(base64Data, file.type);
+        if (parsedApps.length === 0) {
+            alert("Gozi couldn't detect any apps, or the image format wasn't supported. Please try again or add them manually.");
+        } else {
+            const newApps = parsedApps.filter(app => !data.digitalApps.includes(app));
+            updateData({ digitalApps: [...data.digitalApps, ...newApps] });
+        }
+      }
+      setIsParsing(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <Shell stepNum={stepNum} totalSteps={totalSteps} onBack={onBack} onSkip={onNext}>
+      <div className="mb-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">Digital Inventory</p>
+        <h2 className="text-4xl font-serif italic text-[#1A1815] leading-tight">Apps on your<br />phone</h2>
+        <p className="text-[#6B6560] text-sm leading-relaxed mt-4">
+          This helps Gozi suggest using your favorite tools for activities. 
+        </p>
+      </div>
+
+      <div className="flex-1 space-y-6">
+        <div className={`bg-white border border-[#E4E0D8] rounded-2xl p-5 flex flex-col items-center justify-center text-center gap-3 transition-all ${isParsing ? 'bg-gray-50 opacity-80' : ''}`}>
+          <div className="w-12 h-12 bg-[#F7F4EF] rounded-full flex items-center justify-center text-xl mb-1">📸</div>
+          <div>
+            <p className="text-sm font-semibold text-[#1A1815]">Upload Screenshot</p>
+            <p className="text-[10px] text-[#8A8580] uppercase tracking-wide mt-1">Let Gozi detect them magically</p>
+          </div>
+          <label className={`mt-2 px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${isParsing ? 'bg-[#E4E0D8] text-[#8A8580] cursor-wait' : 'bg-[#1A1815] text-white cursor-pointer hover:bg-[#2D2A26] active:scale-95'}`}>
+            {isParsing ? "Analyzing image..." : "Select Image"}
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isParsing} />
+          </label>
+          {isParsing && (
+            <div className="w-full mt-2 space-y-2">
+              <div className="h-1.5 w-full bg-[#E4E0D8] rounded-full overflow-hidden">
+                <div className="h-full bg-[#1A1815] rounded-full w-1/2 animate-[progress_1s_ease-in-out_infinite]" />
+              </div>
+              <p className="text-[9px] text-[#8A8580] uppercase tracking-widest animate-pulse">Gozi is looking closely...</p>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8A8580] mb-3">Popular Apps</p>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {DIGITAL_APPS_LIST.slice(0, 5).map(app => (
+              <button
+                key={app.id}
+                onClick={async () => {
+                  await Haptics.impact({ style: ImpactStyle.Light });
+                  toggleApp(app.name);
+                }}
+                className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${data.digitalApps.includes(app.name) ? 'bg-[#4A7B5C] border-[#4A7B5C] text-white' : 'bg-white border-[#E4E0D8] text-[#8A8580] hover:border-[#1A1815]'}`}
+              >
+                {app.name}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#8A8580] mb-3">Add manually</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customApp}
+              onChange={e => setCustomApp(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder="e.g. Day One, Strava, Notion…"
+              className="flex-1 bg-white border border-[#E4E0D8] focus:border-[#1A1815] px-4 py-3 rounded-2xl text-sm text-[#1A1815] placeholder-[#C8C4BC] focus:outline-none transition-all"
+            />
+            <button onClick={addCustomApp} className="px-4 py-3 bg-[#1A1815] text-white rounded-2xl text-sm font-bold hover:bg-[#2D2A26] transition-all">+</button>
+          </div>
+        </div>
+
+        {data.digitalApps.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {data.digitalApps.map(app => (
+              <span key={app} className="px-4 py-2 rounded-full bg-[#4A7B5C] text-white text-[11px] font-semibold flex items-center gap-1.5">
+                {app}
+                <button onClick={() => toggleApp(app)} className="opacity-70 hover:opacity-100">×</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="pt-4">
+        <PrimaryBtn onClick={onNext}>Continue →</PrimaryBtn>
+      </div>
+    </Shell>
+  );
+};
+
+
+
+
+const InventoryStep: React.FC<{ data: OnboardingData; updateData: (p: Partial<OnboardingData>) => void; onComplete: () => void; onBack: () => void; isLoading: boolean }> = ({ data, updateData, onComplete, onBack, isLoading }) => (
+  <Shell stepNum={6} totalSteps={TOTAL_VISIBLE_STEPS} onBack={onBack}>
     <div className="mb-8">
-      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">Before you begin</p>
-      <h2 className="text-3xl font-serif italic text-[#1A1815] leading-tight whitespace-nowrap">The heart of your space.</h2>
+      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">Finishing touches</p>
+      <h2 className="text-4xl font-serif italic text-[#1A1815] leading-tight">Describe<br />your space.</h2>
     </div>
 
-    <div className="flex-1 space-y-4 pb-6">
-      <p className="text-sm text-[#6B6560] leading-relaxed">
-        Start your 7-day free trial and experience everything Gozi has to offer. No commitment, cancel anytime.
+    <div className="flex-1 pb-6">
+      <p className="text-sm text-[#6B6560] leading-relaxed mb-5">
+        Tell us anything else about your world: gadgets, instruments, pets, equipment, memberships, or subscriptions. The more you share, the more personal your suggestions become.
       </p>
+      <textarea
+        value={data.inventoryText}
+        onChange={e => updateData({ inventoryText: e.target.value })}
+        className="w-full h-44 bg-white border border-[#E4E0D8] focus:border-[#1A1815] px-5 py-4 rounded-2xl text-sm text-[#1A1815] placeholder-[#C8C4BC] focus:outline-none transition-all resize-none leading-relaxed"
+        placeholder="A guitar, Costco membership, DSLR camera, art supplies, camping gear…"
+      />
+      <div className="mt-5 bg-[#EBF2ED] rounded-2xl p-4 border border-[#C8DDD0]">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#4A7B5C] mb-1">✦ Why this matters</p>
+        <p className="text-xs text-[#4A7B5C] leading-relaxed">Your inventory helps us suggest activities that are actually possible with what you own, not generic ideas, but things tailored specifically to your life.</p>
+      </div>
+    </div>
 
+    <div className="pt-4">
+      <PrimaryBtn onClick={onComplete}>
+        Continue →
+      </PrimaryBtn>
+    </div>
+  </Shell>
+);
+
+const SubscriptionStep: React.FC<{ onNext: () => void; isLoading?: boolean }> = ({ onNext, isLoading }) => (
+  <Shell stepNum={8} totalSteps={TOTAL_VISIBLE_STEPS} hideNav>
+    <div className="mb-6">
+      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">Choose your path</p>
+      <h2 className="text-4xl font-serif italic text-[#1A1815] leading-tight">Elevate your<br />experience.</h2>
+    </div>
+
+    <div className="flex-1 space-y-4">
       {/* Free tier */}
       <div className="bg-white rounded-3xl border border-[#E4E0D8] p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="font-bold text-sm text-[#1A1815]">7-Day Free Trial</p>
-            <p className="text-[10px] text-[#8A8580] uppercase tracking-widest">Full access, no card needed</p>
+            <p className="font-bold text-sm text-[#1A1815]">Free</p>
+            <p className="text-[10px] text-[#8A8580] uppercase tracking-widest">Always included</p>
           </div>
           <span className="text-xl">🌱</span>
         </div>
@@ -471,44 +668,21 @@ const PaywallStep: React.FC<{ onNext: () => void; onBack: () => void }> = ({ onN
     </div>
 
     <div className="pt-4 space-y-3">
-      <SageBtn onClick={onNext}>Start Free Trial →</SageBtn>
-      <GhostBtn onClick={onNext}>Continue with Limited Access</GhostBtn>
-      <p className="text-center text-[10px] text-[#8A8580]">7-day trial, then $4.99/mo. Cancel anytime.</p>
-    </div>
-  </Shell>
-);
-
-const InventoryStep: React.FC<{ data: OnboardingData; updateData: (p: Partial<OnboardingData>) => void; onComplete: () => void; onBack: () => void; isLoading: boolean }> = ({ data, updateData, onComplete, onBack, isLoading }) => (
-  <Shell stepNum={7} totalSteps={TOTAL_VISIBLE_STEPS} onBack={onBack}>
-    <div className="mb-8">
-      <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8580] mb-2">Finishing touches</p>
-      <h2 className="text-4xl font-serif italic text-[#1A1815] leading-tight">Describe<br />your space.</h2>
-    </div>
-
-    <div className="flex-1 pb-6">
-      <p className="text-sm text-[#6B6560] leading-relaxed mb-5">
-        Tell us anything else about your world: gadgets, instruments, pets, equipment. The more you share, the more personal your suggestions become.
-      </p>
-      <textarea
-        value={data.inventoryText}
-        onChange={e => updateData({ inventoryText: e.target.value })}
-        className="w-full h-44 bg-white border border-[#E4E0D8] focus:border-[#1A1815] px-5 py-4 rounded-2xl text-sm text-[#1A1815] placeholder-[#C8C4BC] focus:outline-none transition-all resize-none leading-relaxed"
-        placeholder="My golden retriever Sparky, a guitar, coffee grinder, DSLR camera, art supplies…"
-      />
-      <div className="mt-5 bg-[#EBF2ED] rounded-2xl p-4 border border-[#C8DDD0]">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#4A7B5C] mb-1">✦ Why this matters</p>
-        <p className="text-xs text-[#4A7B5C] leading-relaxed">Your inventory helps us suggest activities that are actually possible with what you own, not generic ideas, but things tailored specifically to your life.</p>
-      </div>
-    </div>
-
-    <div className="pt-4">
-      <PrimaryBtn onClick={onComplete} disabled={isLoading}>
+      <SageBtn onClick={onNext}>
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
-            <LoaderIcon className="w-4 h-4 animate-spin" /> Setting up your sanctuary…
+            <LoaderIcon className="w-4 h-4 animate-spin" /> Setting up...
           </span>
-        ) : "Enter Your Sanctuary →"}
-      </PrimaryBtn>
+        ) : "Upgrade to Premium →"}
+      </SageBtn>
+      <GhostBtn onClick={onNext}>
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <LoaderIcon className="w-4 h-4 animate-spin" /> Setting up...
+          </span>
+        ) : "Continue for Free"}
+      </GhostBtn>
+      <p className="text-center text-[10px] text-[#8A8580]">You can upgrade anytime from your profile.</p>
     </div>
   </Shell>
 );

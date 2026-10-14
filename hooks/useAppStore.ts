@@ -106,7 +106,7 @@ export const useAppStore = () => {
             const lastSurveyDate = profileData?.last_survey_date ? new Date(profileData.last_survey_date) : null;
             const createdAt = profileData?.created_at ? new Date(profileData.created_at) : new Date();
             let surveyDue = false;
-            const subTier = profileData?.subscription_tier || 'Free';
+            const subTier = profileData?.subscription_tier || 'None';
 
             const referenceDate = lastSurveyDate || createdAt;
             const days = (new Date().getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24);
@@ -135,7 +135,7 @@ export const useAppStore = () => {
                                 username: foundUser.name || foundUser.email,
                                 isLoggedIn: true,
                                 onboardingCompleted: true,
-                                subscriptionTier: foundUser.subscription_tier || 'Free',
+                                subscriptionTier: foundUser.subscription_tier || 'None',
                                 livingSituation: prefData?.living_situation || null,
                                 partnerUsername: prefData?.partner_username || null,
                             },
@@ -190,15 +190,38 @@ export const useAppStore = () => {
                     }
                 },
                 hobbies: prefData?.hobbies || [],
-                inventory: invData?.map((i: any) => ({
-                    id: i.id,
-                    name: i.name,
-                    category: i.category,
-                    confidence: Number(i.confidence) || 1,
-                    interest: i.interest,
-                    description: i.description,
-                    shareWithFriends: i.share_with_friends ?? i.shareWithFriends ?? true
-                })) || []
+                digitalApps: prefData?.digital_apps || [],
+                savedCures: prefData?.saved_cures || [],
+                dailyRefreshHistory: prefData?.daily_refresh_history || [],
+                completedSuggestions: prefData?.completed_suggestions || [],
+                inventory: (() => {
+                    const rawInv = invData || [];
+                    const detailedConsoles = rawInv
+                        .map((i: any) => i.name.split(':')[0]?.trim()?.toLowerCase())
+                        .filter((name: string) => name && rawInv.some((x: any) => x.name.toLowerCase() !== name && x.name.toLowerCase().startsWith(name + ':')));
+
+                    const filteredInv = rawInv.filter((i: any) => {
+                        const nameLower = i.name.toLowerCase();
+                        if (['playstation', 'xbox', 'nintendo', 'switch', 'ps4', 'ps5', 'pc gaming'].includes(nameLower)) {
+                            if (detailedConsoles.includes(nameLower)) {
+                                // Proactively delete it from supabase database so it is cleaned up permanently!
+                                supabase.from('inventory_items').delete().eq('id', i.id).then(() => {});
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+
+                    return filteredInv.map((i: any) => ({
+                        id: i.id,
+                        name: i.name,
+                        category: i.category,
+                        confidence: Number(i.confidence) || 1,
+                        interest: i.interest,
+                        description: i.description,
+                        shareWithFriends: i.share_with_friends ?? i.shareWithFriends ?? true
+                    }));
+                })()
             };
             
             setState(loadedState);
@@ -227,17 +250,25 @@ export const useAppStore = () => {
             
             // Auto-sync preferences if they changed
             const hobbiesChanged = JSON.stringify(newState.hobbies) !== JSON.stringify(oldState.hobbies);
+            const digitalAppsChanged = JSON.stringify(newState.digitalApps) !== JSON.stringify(oldState.digitalApps);
+            const savedCuresChanged = JSON.stringify(newState.savedCures) !== JSON.stringify(oldState.savedCures);
+            const dailyRefreshHistoryChanged = JSON.stringify(newState.dailyRefreshHistory) !== JSON.stringify(oldState.dailyRefreshHistory);
+            const completedSuggestionsChanged = JSON.stringify(newState.completedSuggestions) !== JSON.stringify(oldState.completedSuggestions);
             const prefsChanged = newState.userProfile.livingSituation !== oldState.userProfile.livingSituation || 
                                  newState.userProfile.partnerUsername !== oldState.userProfile.partnerUsername;
             const friendsChanged = JSON.stringify(newState.userProfile.friendUsernames) !== JSON.stringify(oldState.userProfile.friendUsernames);
                                  
-            if (hobbiesChanged || prefsChanged) {
+            if (hobbiesChanged || digitalAppsChanged || savedCuresChanged || dailyRefreshHistoryChanged || completedSuggestionsChanged || prefsChanged) {
                 supabase.from('preferences').upsert({
                     id: currentUser, // assuming currentUser is the UUID due to our updated init flow
                     user_id: currentUser,
                     living_situation: newState.userProfile.livingSituation,
                     partner_username: newState.userProfile.partnerUsername,
-                    hobbies: newState.hobbies
+                    hobbies: newState.hobbies,
+                    digital_apps: newState.digitalApps,
+                    saved_cures: newState.savedCures,
+                    daily_refresh_history: newState.dailyRefreshHistory || [],
+                    completed_suggestions: newState.completedSuggestions || []
                 }).then(({ error }: any) => { if(error) console.error(error); });
             }
 
@@ -374,13 +405,23 @@ export const useAppStore = () => {
         updateCurrentUserState(prev => ({ ...prev, userProfile: { ...prev.userProfile, onboardingCompleted: true } }));
     };
 
-    const upgradeSubscription = (tier: 'Premium') => {
+    const upgradeSubscription = (tier: 'None' | 'Good' | 'Better' | 'Best') => {
         updateCurrentUserState(prev => ({
             ...prev,
             userProfile: {
                 ...prev.userProfile,
                 subscriptionTier: tier,
                 trialEndDate: null,
+            }
+        }));
+    };
+
+    const updateFamilyProfile = (family: Partial<AppState['userProfile']['family']>) => {
+        updateCurrentUserState(prev => ({
+            ...prev,
+            userProfile: {
+                ...prev.userProfile,
+                family: { ...prev.userProfile.family, ...family }
             }
         }));
     };
@@ -508,10 +549,13 @@ export const useAppStore = () => {
                     hobbies: targetHobbies
                 };
 
-                try {
-                    const inv = await geminiService.getInventorySuggestions(state.currentMood!, effectiveSocialContext, effectiveUserState, sharedContext, state.currentTimeAvailability, state.isDateNightMode);
-                    updateCurrentUserState(prev => ({ ...prev, inventorySuggestions: inv }));
-                } catch (e) { console.error("Inv error", e); }
+                const shouldFetchInventory = !state.isDateNightMode || state.dateNightContext === 'inventory';
+                if (shouldFetchInventory) {
+                    try {
+                        const inv = await geminiService.getInventorySuggestions(state.currentMood!, effectiveSocialContext, effectiveUserState, sharedContext, state.currentTimeAvailability, state.isDateNightMode);
+                        updateCurrentUserState(prev => ({ ...prev, inventorySuggestions: inv }));
+                    } catch (e) { console.error("Inv error", e); }
+                }
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -534,29 +578,34 @@ export const useAppStore = () => {
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
 
-                 navigator.geolocation.getCurrentPosition(
-                    async (position) => {
-                        const { latitude, longitude } = position.coords;
-                        try {
-                            const loc = await geminiService.getLocalActivitySuggestions(state.currentMood!, effectiveSocialContext, { latitude, longitude }, effectiveUserState, sharedContext, state.currentTimeAvailability, state.isDateNightMode);
-                            updateCurrentUserState(prev => ({ ...prev, localActivitySuggestions: loc, isLoading: false }));
-                        } catch (e) {
-                             console.error("Loc error", e);
-                             updateCurrentUserState(prev => ({ ...prev, isLoading: false }));
-                        }
-                    },
-                    async (err) => {
-                        console.warn("Geo access denied or failed, using default coordinates (Mankato, MN)", err);
-                        try {
-                            const loc = await geminiService.getLocalActivitySuggestions(state.currentMood!, effectiveSocialContext, { latitude: 44.1636, longitude: -93.9994 }, effectiveUserState, sharedContext, state.currentTimeAvailability, state.isDateNightMode);
-                            updateCurrentUserState(prev => ({ ...prev, localActivitySuggestions: loc, isLoading: false }));
-                        } catch (e) {
-                             console.error("Loc error (fallback)", e);
-                             updateCurrentUserState(prev => ({ ...prev, isLoading: false }));
-                        }
-                    },
-                    { timeout: 5000 }
-                );
+                 const shouldFetchLocal = !state.isDateNightMode || state.dateNightContext !== 'inventory';
+                 if (shouldFetchLocal) {
+                     navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const { latitude, longitude } = position.coords;
+                            try {
+                                const loc = await geminiService.getLocalActivitySuggestions(state.currentMood!, effectiveSocialContext, { latitude, longitude }, effectiveUserState, sharedContext, state.currentTimeAvailability, state.isDateNightMode);
+                                updateCurrentUserState(prev => ({ ...prev, localActivitySuggestions: loc, isLoading: false }));
+                            } catch (e) {
+                                 console.error("Loc error", e);
+                                 updateCurrentUserState(prev => ({ ...prev, isLoading: false }));
+                            }
+                        },
+                        async (err) => {
+                            console.warn("Geo access denied or failed, using default coordinates (Mankato, MN)", err);
+                            try {
+                                const loc = await geminiService.getLocalActivitySuggestions(state.currentMood!, effectiveSocialContext, { latitude: 44.1636, longitude: -93.9994 }, effectiveUserState, sharedContext, state.currentTimeAvailability, state.isDateNightMode);
+                                updateCurrentUserState(prev => ({ ...prev, localActivitySuggestions: loc, isLoading: false }));
+                            } catch (e) {
+                                 console.error("Loc error (fallback)", e);
+                                 updateCurrentUserState(prev => ({ ...prev, isLoading: false }));
+                            }
+                        },
+                        { timeout: 5000 }
+                    );
+                 } else {
+                     updateCurrentUserState(prev => ({ ...prev, isLoading: false }));
+                 }
             } catch (e) {
                 setError("Failed to fetch suggestions.");
                 setLoading(false);
@@ -590,7 +639,40 @@ export const useAppStore = () => {
     }, [state.dailyRefresh]);
     
     const completeNudge = () => addXP(XP_REWARDS.NUDGE);
-    const completeDailyRefresh = () => addXP(XP_REWARDS.DAILY_REFRESH);
+
+    const completeDailyRefresh = (userAnswer: string) => {
+        if (!state.dailyRefresh) return;
+        const newHistoryItem = {
+            id: state.dailyRefresh.id,
+            question: state.dailyRefresh.question,
+            answer: state.dailyRefresh.answer || '',
+            userAnswer: userAnswer,
+            date: new Date().toLocaleDateString()
+        };
+        updateCurrentUserState(prev => {
+            const currentHistory = prev.dailyRefreshHistory || [];
+            if (currentHistory.some(item => item.id === newHistoryItem.id)) {
+                return prev;
+            }
+            return {
+                ...prev,
+                dailyRefreshHistory: [...currentHistory, newHistoryItem]
+            };
+        });
+        addXP(XP_REWARDS.DAILY_REFRESH);
+    };
+
+    const completeSuggestion = (suggestion: Suggestion) => {
+        updateCurrentUserState(prev => {
+            const completed = prev.completedSuggestions || [];
+            if (completed.includes(suggestion.title)) return prev;
+            return {
+                ...prev,
+                completedSuggestions: [...completed, suggestion.title]
+            };
+        });
+        addXP(XP_REWARDS.NUDGE);
+    };
 
     const addHabit = (habit: Omit<Habit, 'id' | 'currentStreak' | 'longestStreak' | 'completions' | 'lastCompletionDate'>) => {
         const newHabit: Habit = { ...habit, id: Date.now().toString(), currentStreak: 0, longestStreak: 0, completions: [], lastCompletionDate: null };
@@ -629,10 +711,31 @@ export const useAppStore = () => {
     
     const addInventoryFromOnboarding = async (onboardingData: OnboardingData) => {
         setLoading(true);
-        const { streaming, games, goals, hobbies, inventoryText, gameListText } = onboardingData;
-        const combinedText = `Streaming: ${streaming.join(', ')}. Games: ${games.join(', ')}. Specific Games: ${gameListText || 'N/A'}. Other: ${inventoryText}.`;
+        const { streaming, games, goals, hobbies, inventoryText, gameListText, digitalApps } = onboardingData;
+        
+        // Filter out console names from the games array if they are already detailed in gameListText
+        const consolePlatformsWithGames = (gameListText || '').split('. ').map(p => p.split(':')[0]?.trim()).filter(Boolean);
+        const filteredGames = games.filter(g => !consolePlatformsWithGames.some(c => c.toLowerCase() === g.toLowerCase()));
+        
+        const combinedText = `Streaming: ${streaming.join(', ')}. Games: ${filteredGames.join(', ')}. Specific Games: ${gameListText || 'N/A'}. Other: ${inventoryText}.`;
         const categorizedItems = await geminiService.categorizeInventory(combinedText);
         
+        const hobbiesList = [...hobbies];
+        const lowerInvText = (inventoryText || '').toLowerCase();
+        if (['dog', 'golden retriever', 'puppy', 'canine'].some(kw => lowerInvText.includes(kw))) {
+            if (!hobbiesList.some(h => h.toLowerCase() === 'dogs' || h.toLowerCase() === 'dog ownership')) {
+                hobbiesList.push('Dog ownership');
+            }
+        } else if (['cat', 'kitten', 'feline'].some(kw => lowerInvText.includes(kw))) {
+            if (!hobbiesList.some(h => h.toLowerCase() === 'cats' || h.toLowerCase() === 'cat ownership')) {
+                hobbiesList.push('Cat ownership');
+            }
+        } else if (['pet', 'animal'].some(kw => lowerInvText.includes(kw))) {
+            if (!hobbiesList.some(h => h.toLowerCase() === 'pets' || h.toLowerCase() === 'pet ownership')) {
+                hobbiesList.push('Pet ownership');
+            }
+        }
+
         const uid = data.currentUser!;
         const newItemsToInsert = categorizedItems.map((item: any) => ({
              user_id: uid,
@@ -646,26 +749,27 @@ export const useAppStore = () => {
         await supabase.from('preferences').upsert({
             id: uid,
             user_id: uid,
-            hobbies: hobbies,
+            hobbies: hobbiesList,
+            digital_apps: digitalApps || [],
             living_situation: null,
             partner_username: null
         });
 
         updateCurrentUserState(prev => {
             const newItems: InventoryItem[] = categorizedItems.map((item: any) => ({ id: `${Date.now()}-${item.name}`, ...item }));
-            const updated = { ...prev, hobbies: [...prev.hobbies, ...hobbies], goals: [...(prev.goals || []), ...goals], inventory: [...prev.inventory, ...newItems], isLoading: false, isSurveyDue: false, userProfile: { ...prev.userProfile, onboardingCompleted: true } };
+            const updated = { ...prev, hobbies: [...prev.hobbies, ...hobbiesList], goals: [...(prev.goals || []), ...goals], digitalApps: [...(prev.digitalApps || []), ...(digitalApps || [])], inventory: [...prev.inventory, ...newItems], isLoading: false, isSurveyDue: false, userProfile: { ...prev.userProfile, onboardingCompleted: true } };
             return checkAndUnlockAchievements(updated);
         });
     };
     
-    const processBulkInventory = async (text: string) => {
+    const processBulkInventory = async (text: string, targetCategory?: string) => {
         setLoading(true);
         const categorizedItems = await geminiService.categorizeInventory(text);
         const uid = data.currentUser!;
         const newItemsToInsert = categorizedItems.map((item: any) => ({
              user_id: uid,
              name: item.name,
-             category: item.category,
+             category: targetCategory || item.category,
              confidence: item.confidence?.toString(),
              interest: item.interest,
              description: item.description
@@ -673,7 +777,7 @@ export const useAppStore = () => {
         await supabase.from('inventory_items').insert(newItemsToInsert);
 
         updateCurrentUserState(prev => {
-            const newItems: InventoryItem[] = categorizedItems.map((item: any) => ({ id: `${Date.now()}-${item.name}`, ...item }));
+            const newItems: InventoryItem[] = categorizedItems.map((item: any) => ({ id: `${Date.now()}-${item.name}`, ...item, category: targetCategory || item.category }));
             const updated = { ...prev, inventory: [...prev.inventory, ...newItems], isLoading: false };
             return checkAndUnlockAchievements(updated);
         });
@@ -935,6 +1039,10 @@ export const useAppStore = () => {
         updateCurrentUserState(prev => ({ ...prev, friendInventoryContext: context, inventorySuggestions: [], externalContentSuggestions: [], musicSuggestions: [], localActivitySuggestions: [], miniGameSuggestions: [] }));
     };
 
+    const setDateNightContext = (context: 'out' | 'inventory') => {
+        updateCurrentUserState(prev => ({ ...prev, dateNightContext: context, inventorySuggestions: [], localActivitySuggestions: [] }));
+    };
+
     const loadFriendState = async (username: string) => {
         try {
             const { data: users } = await supabase.from('profiles').select('*');
@@ -1087,6 +1195,12 @@ export const useAppStore = () => {
             setError("You cannot add yourself.");
             return false;
         }
+
+        const isPro = state.userProfile.subscriptionTier === 'Better' || state.userProfile.subscriptionTier === 'Best';
+        if (!isPro && state.userProfile.friendUsernames.length >= 5) {
+            setError("Upgrade to Pro to add more than 5 friends.");
+            return false;
+        }
         
         updateCurrentUserState(prev => {
             if(prev.userProfile.friendUsernames.includes(friendUsername)) return prev;
@@ -1125,21 +1239,72 @@ export const useAppStore = () => {
         linkElement.click();
     };
 
+    const addDigitalApp = (appName: string) => {
+        updateCurrentUserState(prev => ({
+            ...prev,
+            digitalApps: [...(prev.digitalApps || []), appName]
+        }));
+    };
+
+    const removeDigitalApp = (appName: string) => {
+        updateCurrentUserState(prev => ({
+            ...prev,
+            digitalApps: (prev.digitalApps || []).filter(a => a !== appName)
+        }));
+    };
+
+    const archiveSavedCure = (cureId: string) => {
+        updateCurrentUserState(prev => ({
+            ...prev,
+            savedCures: (prev.savedCures || []).filter(c => c.id !== cureId)
+        }));
+    };
+
+    const saveCure = (suggestion: Suggestion) => {
+        updateCurrentUserState(prev => {
+            const exists = (prev.savedCures || []).some(c => c.suggestion?.title === suggestion.title);
+            if (exists) {
+                return {
+                    ...prev,
+                    savedCures: (prev.savedCures || []).filter(c => c.suggestion?.title !== suggestion.title)
+                };
+            }
+            const newCure: SavedCure = {
+                id: `cure-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
+                suggestion,
+                savedAt: new Date().toISOString(),
+                isArchived: false
+            };
+            return {
+                ...prev,
+                savedCures: [...(prev.savedCures || []), newCure]
+            };
+        });
+    };
+
+    const setHasSeenFirstSuggestion = (val: boolean) => {
+        updateCurrentUserState(prev => ({
+            ...prev,
+            userProfile: { ...prev.userProfile, hasSeenFirstSuggestion: val }
+        }));
+    };
+
     return {
         state,
         users: data.users,
         actions: {
             login, logout, resetData, setOnboardingCompleted, upgradeSubscription, setActiveScreen,
             addXP, setMood, setSocialContext, setTimeAvailability, toggleDateNightMode, fetchSuggestions,
-            fetchDailyRefresh, completeNudge, completeDailyRefresh,
+            fetchDailyRefresh, completeNudge, completeDailyRefresh, completeSuggestion,
             addHabit, updateHabit, deleteHabit, completeHabit,
             addInventoryFromOnboarding, processBulkInventory, updateInventoryItem, deleteInventoryItem,
             addHobby, deleteHobby, addHobbyWithDetails, setHobbyToDetail,
             addChatMessage, startVoiceChat, endVoiceChat,
             fetchWeeklySurvey, submitWeeklySurvey, dismissWeeklySurvey,
-            updateRelationshipStatus, setPartnerUsername, updateLivingSituation, updatePreferences,
+            updateRelationshipStatus, setPartnerUsername, updateLivingSituation, updateFamilyProfile, updatePreferences,
             syncWithPartner, addFriend, removeFriend, removePartner,
-            exportData, setFriendInventoryContext,
+            exportData, setFriendInventoryContext, setDateNightContext,
+            addDigitalApp, removeDigitalApp, archiveSavedCure, saveCure, setHasSeenFirstSuggestion
         }
     };
 };

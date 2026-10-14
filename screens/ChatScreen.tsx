@@ -33,8 +33,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-ios-bg dark:bg-gray-950 transition-colors duration-300">
-        <header className="p-4 border-b border-ios-border dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between">
+    <div className="h-screen flex flex-col bg-ios-bg  transition-colors duration-300">
+        <header className="p-4 border-b border-ios-border  bg-white/80  backdrop-blur-md sticky top-0 z-10 flex items-center justify-between">
             <div className="w-8" /> {/* Spacer */}
             <h1 className="text-[9px] font-bold uppercase tracking-[0.3em] text-ios-muted">Gozi</h1>
             <div className="w-6 h-6 rounded-full bg-ios-accent/10 flex items-center justify-center">
@@ -45,7 +45,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40 no-scrollbar">
           {chatHistory.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} animate-fade-in`}>
-              <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${msg.sender === 'user' ? 'bg-ios-accent text-white rounded-tr-none' : 'bg-ios-card text-ios-text border border-ios-border dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 rounded-tl-none'}`}>
+              <div className={`max-w-[85%] p-4 rounded-2xl shadow-sm ${msg.sender === 'user' ? 'bg-ios-accent text-white rounded-tr-none' : 'bg-ios-card text-ios-text border border-ios-border    rounded-tl-none'}`}>
                 <p className="text-sm leading-relaxed">{msg.text}</p>
                 {msg.sender === 'ai' && msg.suggestions && (
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -68,7 +68,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
           ))}
           {isLoading && !isVoiceSessionActive && (
             <div className="flex justify-start items-end gap-2 animate-pulse">
-                 <div className="p-4 bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 rounded-2xl rounded-tl-none">
+                 <div className="p-4 bg-ios-card  border border-ios-border  rounded-2xl rounded-tl-none">
                     <LoaderIcon className="w-4 h-4 text-ios-muted animate-spin" />
                  </div>
             </div>
@@ -90,7 +90,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t border-ios-border dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md fixed bottom-20 left-0 right-0 max-w-lg mx-auto transition-all duration-300">
+        <div className="p-4 border-t border-ios-border  bg-white/90  backdrop-blur-md fixed bottom-20 left-0 right-0 max-w-lg mx-auto transition-all duration-300">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -100,12 +100,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ state, actions }) => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={isVoiceSessionActive ? "Listening..." : "Message..."}
                 disabled={isVoiceSessionActive}
-                className="w-full bg-ios-bg dark:bg-gray-800 border border-ios-border dark:border-gray-700 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-ios-accent text-sm text-ios-text dark:text-white disabled:opacity-50 rounded-2xl shadow-inner transition-all"
+                className="w-full bg-ios-bg  border border-ios-border  px-4 py-3 focus:outline-none focus:ring-1 focus:ring-ios-accent text-sm text-ios-text  disabled:opacity-50 rounded-2xl shadow-inner transition-all"
               />
             </div>
             <button
               onClick={isVoiceSessionActive ? endVoiceChat : startVoiceChat}
-              className={`p-3 transition-all rounded-2xl shadow-sm ${isVoiceSessionActive ? 'bg-red-500 text-white animate-pulse' : 'bg-ios-bg hover:bg-ios-border dark:bg-gray-800 dark:hover:bg-gray-700 text-ios-muted'}`}
+              className={`p-3 transition-all rounded-2xl shadow-sm ${isVoiceSessionActive ? 'bg-red-500 text-white animate-pulse' : 'bg-ios-bg hover:bg-ios-border  :bg-gray-700 text-ios-muted'}`}
             >
                 {isVoiceSessionActive ? <StopCircleIcon className="w-4 h-4" /> : <MicrophoneIcon className="w-4 h-4" />}
             </button>

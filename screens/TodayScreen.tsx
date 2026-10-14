@@ -8,6 +8,8 @@ import { BookOpenIcon, HeartIcon, LightbulbIcon, LoaderIcon, MapPinIcon, Podcast
 import { WeeklySurveyModal } from '@/components/WeeklySurveyModal';
 import { ActivityMap } from '@/components/ActivityMap';
 import { WelcomeTour } from '@/components/WelcomeTour';
+import { PartnerSessionModal } from '@/components/PartnerSessionModal';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 type TodayScreenProps = {
     state: AppState;
@@ -24,13 +26,14 @@ const getGreeting = () => {
 const FREE_DAILY_LIMIT = 3;
 
 export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
-    const { userProfile, currentMood, socialContext, currentTimeAvailability, isDateNightMode, inventorySuggestions, externalContentSuggestions, musicSuggestions, localActivitySuggestions, miniGameSuggestions, dailyRefresh, isLoading, isSurveyDue, currentWeeklySurvey, friendInventoryContext } = state;
-    const { setMood, setSocialContext, setTimeAvailability, toggleDateNightMode, fetchSuggestions, fetchDailyRefresh, completeDailyRefresh, fetchWeeklySurvey, submitWeeklySurvey, dismissWeeklySurvey, setFriendInventoryContext } = actions;
+    const { userProfile, currentMood, socialContext, currentTimeAvailability, isDateNightMode, inventorySuggestions, externalContentSuggestions, musicSuggestions, localActivitySuggestions, miniGameSuggestions, trendingSuggestions, dailyRefresh, isLoading, isSurveyDue, currentWeeklySurvey, friendInventoryContext, dateNightContext, hasSeenFirstSuggestion } = state;
+    const { setMood, setSocialContext, setTimeAvailability, toggleDateNightMode, fetchSuggestions, fetchDailyRefresh, completeDailyRefresh, fetchWeeklySurvey, submitWeeklySurvey, dismissWeeklySurvey, setFriendInventoryContext, setDateNightContext, setHasSeenFirstSuggestion, saveCure, completeSuggestion } = actions;
 
     const today = new Date().toDateString();
     const isFree = userProfile.subscriptionTier === 'Free';
     const dailyFetchCount = state.dailyFetchCountDate === today ? (state.dailyFetchCount || 0) : 0;
     const isRefreshLimitReached = isFree && dailyFetchCount >= FREE_DAILY_LIMIT;
+    const remainingFetches = Math.max(0, FREE_DAILY_LIMIT - dailyFetchCount);
 
     const todayKey = `dr-${new Date().toDateString()}`;
     const [refreshAnswer, setRefreshAnswer] = useState(() => {
@@ -45,6 +48,9 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
     const contextSectionRef = useRef<HTMLDivElement>(null);
     const [isTourActive, setIsTourActive] = useState(false);
 
+    const [isPartnerSessionModalOpen, setIsPartnerSessionModalOpen] = useState(false);
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+    const [activeActionSuggestion, setActiveActionSuggestion] = useState<Suggestion | null>(null);
     const [showMap, setShowMap] = useState(false);
     const [mapCoords, setMapCoords] = useState<{ latitude: number; longitude: number } | null>(null);
     const [fetchingCoords, setFetchingCoords] = useState(false);
@@ -143,7 +149,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
 
     const handleRefreshSubmit = () => {
         setShowRefreshResult(true);
-        completeDailyRefresh();
+        completeDailyRefresh(refreshAnswer);
         localStorage.setItem(`daily_refresh_completed_${todayKey}`, 'true');
         localStorage.setItem(`daily_refresh_answer_${todayKey}`, refreshAnswer);
         setTimeout(() => {
@@ -156,7 +162,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
             <header className="flex justify-between items-center">
                 <div className="flex flex-col">
                     <p className="text-ios-muted text-[8px] font-bold uppercase tracking-[0.2em]">{getGreeting()}</p>
-                    <h1 className="text-2xl font-serif italic text-ios-text dark:text-white leading-tight">{userProfile.username}</h1>
+                    <h1 className="text-2xl font-serif italic text-ios-text  leading-tight">{userProfile.username}</h1>
                 </div>
                 <button
                     onClick={() => actions.setActiveScreen('Profile')}
@@ -168,7 +174,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
             </header>
 
             {isSurveyDue && (
-                <div className="bg-ios-accent dark:bg-blue-700 rounded-2xl p-4 text-white shadow-sm flex justify-between items-center">
+                <div className="bg-ios-accent  rounded-2xl p-4 text-white shadow-sm flex justify-between items-center">
                     <div>
                         <h3 className="font-serif italic text-xl">Weekly Check-in</h3>
                         <p className="text-white/70 text-[10px] uppercase tracking-widest mt-0.5">Reflect on your progress</p>
@@ -179,29 +185,42 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 </div>
             )}
 
+
+            {isFree && state.suggestionsFetchCount > 0 && hasSeenFirstSuggestion && (
+                <div className="bg-[#1A1815] rounded-2xl p-4 text-white shadow-sm flex justify-between items-center mt-4">
+                    <div>
+                        <h3 className="font-serif italic text-sm">Free Tier</h3>
+                        <p className="text-white/70 text-[10px] uppercase tracking-widest mt-0.5">{remainingFetches} suggestion refreshes remaining today</p>
+                    </div>
+                    <button onClick={() => actions.upgradeSubscription('Best')} className="bg-[#4A7B5C] text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-[#3D6A4E] transition-colors">
+                        Upgrade
+                    </button>
+                </div>
+            )}
+
             <ProgressCard profile={userProfile} />
 
             {dailyRefresh && (
-                <div className="bg-ios-card dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-ios-border dark:border-gray-700">
+                <div className="bg-ios-card  rounded-2xl overflow-hidden shadow-sm border border-ios-border ">
                     <button 
                         onClick={() => setIsDailyRefreshOpen(!isDailyRefreshOpen)}
                         className="w-full p-6 flex items-center justify-between hover:bg-ios-bg/50 transition-colors"
                     >
                          <div className="flex items-center gap-4">
-                            <div className="bg-ios-bg dark:bg-gray-700 p-3 rounded-full text-ios-accent dark:text-yellow-400">
+                            <div className="bg-ios-bg  p-3 rounded-full text-ios-accent ">
                                 <LightbulbIcon className="w-5 h-5" />
                             </div>
                             <div className="text-left">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-ios-muted">Daily Refresh</h3>
-                                {!isDailyRefreshOpen && <p className="text-lg font-serif italic text-ios-text dark:text-white line-clamp-1">{dailyRefresh.question}</p>}
+                                {!isDailyRefreshOpen && <p className="text-lg font-serif italic text-ios-text  line-clamp-1">{dailyRefresh.question}</p>}
                             </div>
                          </div>
                          <ChevronDownIcon className={`w-5 h-5 text-ios-muted transition-transform duration-300 ${isDailyRefreshOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isDailyRefreshOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="p-6 pt-0 border-t border-ios-border/50 dark:border-gray-700 mt-2">
-                            <p className="text-xl font-serif italic text-ios-text dark:text-gray-300 my-4">{dailyRefresh.question}</p>
+                        <div className="p-6 pt-0 border-t border-ios-border/50  mt-2">
+                            <p className="text-xl font-serif italic text-ios-text  my-4">{dailyRefresh.question}</p>
                             {!showRefreshResult ? (
                                 <div className="flex gap-2">
                                     <input
@@ -209,7 +228,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                                         value={refreshAnswer}
                                         onChange={(e) => setRefreshAnswer(e.target.value)}
                                         placeholder="Your answer..."
-                                        className="flex-1 bg-ios-bg dark:bg-gray-900 border border-ios-border dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-ios-accent text-ios-text dark:text-white"
+                                        className="flex-1 bg-ios-bg  border border-ios-border  rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-ios-accent text-ios-text "
                                     />
                                     <button
                                         onClick={handleRefreshSubmit}
@@ -221,10 +240,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                                     </button>
                                 </div>
                             ) : (
-                                <div className="bg-ios-bg dark:bg-gray-900 rounded-xl p-4 border border-ios-border dark:border-gray-700">
-                                    <p className="text-xs uppercase tracking-widest text-ios-muted mb-2">Your answer: <span className="text-ios-text dark:text-white font-bold">{refreshAnswer}</span></p>
-                                    <p className="text-lg font-serif italic text-green-600 dark:text-green-400">Correct: {dailyRefresh.answer}</p>
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-ios-accent dark:text-blue-400 mt-3 font-bold">+25 XP Claimed</p>
+                                <div className="bg-ios-bg  rounded-xl p-4 border border-ios-border ">
+                                    <p className="text-xs uppercase tracking-widest text-ios-muted mb-2">Your answer: <span className="text-ios-text  font-bold">{refreshAnswer}</span></p>
+                                    <p className="text-lg font-serif italic text-green-600 ">Correct: {dailyRefresh.answer}</p>
+                                    <p className="text-[10px] uppercase tracking-[0.2em] text-ios-accent  mt-3 font-bold">+25 XP Claimed</p>
                                 </div>
                             )}
                         </div>
@@ -240,12 +259,22 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 <div className="grid grid-cols-2 gap-4">
                     <select
                         value={socialContext || ''}
-                        onChange={(e) => setSocialContext(e.target.value)}
+                        onChange={(e) => {
+                            const selected = e.target.value;
+                            if (selected === SocialContext.WithFamily) {
+                                const isPro = userProfile.subscriptionTier === 'Better' || userProfile.subscriptionTier === 'Best';
+                                if (!isPro) {
+                                    setIsUpgradeModalOpen(true);
+                                    return;
+                                }
+                            }
+                            setSocialContext(selected);
+                        }}
                         onFocus={scrollToContext}
-                        className="bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 text-ios-text dark:text-white rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-ios-accent appearance-none shadow-sm"
+                        className="bg-ios-card  border border-ios-border  text-ios-text  rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-ios-accent appearance-none shadow-sm"
                     >
                         <option value="" disabled>Social Context</option>
-                        {Object.values(SocialContext).map(c => <option key={c} value={c}>{c}</option>)}
+                        {Object.values(SocialContext).map(c => <option key={c} value={c}>{c === SocialContext.WithFamily ? 'With Family 🔒' : c}</option>)}
                         {userProfile.friendUsernames && userProfile.friendUsernames.map(f => (
                             <option key={f} value={f}>With {f}</option>
                         ))}
@@ -254,7 +283,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                         value={currentTimeAvailability || ''}
                         onChange={(e) => setTimeAvailability(e.target.value as TimeAvailability)}
                         onFocus={scrollToContext}
-                        className="bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 text-ios-text dark:text-white rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-ios-accent appearance-none shadow-sm"
+                        className="bg-ios-card  border border-ios-border  text-ios-text  rounded-2xl p-4 text-sm focus:outline-none focus:ring-1 focus:ring-ios-accent appearance-none shadow-sm"
                     >
                         <option value="" disabled>Time Available</option>
                         {Object.values(TimeAvailability).map(t => <option key={t} value={t}>{t}</option>)}
@@ -262,12 +291,12 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 </div>
 
                 {userProfile.friendUsernames?.includes(socialContext as string) && (
-                    <div className="bg-ios-card dark:bg-gray-800 border border-ios-border dark:border-gray-700 rounded-2xl p-4 space-y-3 shadow-sm animate-fade-in">
+                    <div className="bg-ios-card  border border-ios-border  rounded-2xl p-4 space-y-3 shadow-sm animate-fade-in">
                         <div className="flex flex-col gap-0.5">
                             <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-ios-muted">Location &amp; suggestions mode</p>
-                            <h4 className="text-xs font-semibold text-ios-text dark:text-white">Whose stuff should we suggest activities around?</h4>
+                            <h4 className="text-xs font-semibold text-ios-text ">Whose stuff should we suggest activities around?</h4>
                         </div>
-                        <div className="flex bg-ios-bg dark:bg-gray-900 p-1 rounded-xl gap-1 border border-ios-border/30 dark:border-gray-700/50">
+                        <div className="flex bg-ios-bg  p-1 rounded-xl gap-1 border border-ios-border/30 ">
                             {[
                                 { id: 'my', label: 'At My Place' },
                                 { id: 'their', label: `At ${socialContext}'s` },
@@ -276,7 +305,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                                 <button
                                     key={opt.id}
                                     onClick={() => setFriendInventoryContext(opt.id as 'my' | 'their' | 'both')}
-                                    className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${friendInventoryContext === opt.id ? 'bg-white dark:bg-gray-800 text-ios-text dark:text-white shadow-sm border border-ios-border/30 dark:border-gray-750' : 'text-ios-muted hover:text-ios-text dark:hover:text-white'}`}
+                                    className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${friendInventoryContext === opt.id ? 'bg-white  text-ios-text  shadow-sm border border-ios-border/30 ' : 'text-ios-muted hover:text-ios-text :text-white'}`}
                                 >
                                     {opt.label}
                                 </button>
@@ -286,27 +315,72 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                 )}
                 
                 {socialContext === SocialContext.MyPartner && (
-                     <button 
-                        onClick={toggleDateNightMode}
-                        className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-widest transition-all border ${isDateNightMode ? 'bg-pink-50 border-pink-200 text-pink-600 shadow-sm' : 'bg-ios-card dark:bg-gray-800 border-ios-border dark:border-gray-700 text-ios-muted hover:bg-ios-bg'}`}
-                     >
-                        <HeartIcon className={`w-4 h-4 ${isDateNightMode ? 'fill-pink-600' : ''}`} />
-                        {isDateNightMode ? "Date Night Active" : "Plan Date Night"}
-                     </button>
+                    <div className="space-y-3">
+                         <button 
+                            onClick={() => {
+                                if (!isDateNightMode) {
+                                    setIsPartnerSessionModalOpen(true);
+                                } else {
+                                    toggleDateNightMode();
+                                }
+                            }}
+                            className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-widest transition-all border ${isDateNightMode ? 'bg-pink-50 border-pink-200 text-pink-600 shadow-sm' : 'bg-ios-card  border-ios-border  text-ios-muted hover:bg-ios-bg'}`}
+                         >
+                            <HeartIcon className={`w-4 h-4 ${isDateNightMode ? 'fill-pink-600' : ''}`} />
+                            {isDateNightMode ? "Date Night Active" : "Plan Date Night"}
+                         </button>
+
+                         {isDateNightMode && (
+                             <div className="bg-pink-50/50  border border-pink-200/50  rounded-2xl p-4 space-y-3 shadow-sm animate-fade-in">
+                                 <div className="flex flex-col gap-0.5">
+                                     <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-pink-600/70 ">Date Night Vibe</p>
+                                     <h4 className="text-xs font-semibold text-pink-900 ">What kind of date are you feeling?</h4>
+                                 </div>
+                                 <div className="flex bg-white/50  p-1 rounded-xl gap-1 border border-pink-200/30 ">
+                                     {[
+                                         { id: 'out', label: 'Go Out' },
+                                         { id: 'inventory', label: 'Stay In' },
+                                     ].map(opt => (
+                                         <button
+                                             key={opt.id}
+                                             onClick={() => setDateNightContext(opt.id as 'out' | 'inventory')}
+                                             className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${(!dateNightContext && opt.id === 'out') || dateNightContext === opt.id ? 'bg-pink-500 text-white shadow-sm' : 'text-pink-600/70 hover:text-pink-800  :text-pink-200'}`}
+                                         >
+                                             {opt.label}
+                                         </button>
+                                     ))}
+                                 </div>
+                             </div>
+                         )}
+                    </div>
                 )}
             </div>
 
             {/* Get Out There / Map View - Always Available */}
-            <div className="space-y-4 pt-6 border-t border-ios-border/30 dark:border-gray-800">
+            <div className="space-y-4 pt-3 border-t border-ios-border/30 ">
+                {inventorySuggestions.length > 0 && (!isDateNightMode || dateNightContext === 'inventory') && (
+                    <div className="pb-2">
+                        <SuggestionSection 
+                            title={isDateNightMode ? "Cozy Date Idea" : "From Your Inventory"}
+                            icon={isDateNightMode ? <HeartIcon className="w-4 h-4 text-pink-500" /> : <CheckCircleIcon className="w-4 h-4" />}
+                            items={inventorySuggestions}
+                            onSave={saveCure}
+                            onAction={completeSuggestion}
+                            savedCures={state.savedCures}
+                            completedSuggestions={state.completedSuggestions || []}
+                        />
+                    </div>
+                )}
+
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 ml-1">
                         <div className="text-ios-accent"><MapPinIcon className="w-4 h-4" /></div>
-                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-ios-muted">Get Out There</h3>
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-ios-muted">{isDateNightMode ? "Date Night Outing" : "Get Out There"}</h3>
                     </div>
                     <button 
                         id="map-toggle-btn"
                         onClick={handleMapToggle}
-                        className="px-3 py-1.5 bg-ios-bg dark:bg-gray-700/50 hover:bg-ios-border dark:hover:bg-gray-700 border border-ios-border dark:border-gray-700 rounded-xl text-[9px] font-bold uppercase tracking-wider text-ios-text dark:text-white transition-colors flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-ios-bg  hover:bg-ios-border :bg-gray-700 border border-ios-border  rounded-xl text-[9px] font-bold uppercase tracking-wider text-ios-text  transition-colors flex items-center gap-1.5"
                         disabled={fetchingCoords}
                     >
                         {fetchingCoords ? (
@@ -332,10 +406,17 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                     <ActivityMap latitude={mapCoords.latitude} longitude={mapCoords.longitude} />
                 )}
                 
-                {localActivitySuggestions.length > 0 && (
+                {localActivitySuggestions.length > 0 && (!isDateNightMode || dateNightContext !== 'inventory') && (
                     <div className="grid gap-4">
                         {localActivitySuggestions.map((item, idx) => (
-                            <SuggestionCard key={idx} suggestion={item} />
+                            <SuggestionCard 
+                                key={idx} 
+                                suggestion={item} 
+                                onSave={saveCure} 
+                                onAction={completeSuggestion} 
+                                isSaved={state.savedCures?.some(c => c.suggestion?.title === item.title)}
+                                isCompleted={state.completedSuggestions?.includes(item.title)}
+                            />
                         ))}
                     </div>
                 )}
@@ -362,19 +443,39 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
             ) : (currentMood && socialContext && currentTimeAvailability) ? (
                 <div className="space-y-12 animate-slide-up">
                     
+                    {trendingSuggestions && trendingSuggestions.length > 0 && (
+                        <SuggestionSection 
+                            title="Trending Cures" 
+                            icon={<HeartIcon className="w-4 h-4" />}
+                            items={trendingSuggestions}
+                            onSave={saveCure}
+                            onAction={completeSuggestion}
+                            savedCures={state.savedCures}
+                            completedSuggestions={state.completedSuggestions || []}
+                        />
+                    )}
+
                     {miniGameSuggestions.length > 0 && (
                         <SuggestionSection 
                             title="Mindfulness" 
                             icon={<GamepadIcon className="w-4 h-4" />}
                             items={miniGameSuggestions}
+                            onSave={saveCure}
+                            onAction={completeSuggestion}
+                            savedCures={state.savedCures}
+                            completedSuggestions={state.completedSuggestions || []}
                         />
                     )}
 
-                    {inventorySuggestions.length > 0 && (
+                    {inventorySuggestions.length > 0 && (!isDateNightMode || dateNightContext === 'inventory') && (
                         <SuggestionSection 
-                            title="From Your Inventory" 
-                            icon={<CheckCircleIcon className="w-4 h-4" />}
+                            title={isDateNightMode ? "Cozy Date Idea" : "From Your Inventory"}
+                            icon={isDateNightMode ? <HeartIcon className="w-4 h-4 text-pink-500" /> : <CheckCircleIcon className="w-4 h-4" />}
                             items={inventorySuggestions}
+                            onSave={saveCure}
+                            onAction={completeSuggestion}
+                            savedCures={state.savedCures}
+                            completedSuggestions={state.completedSuggestions || []}
                         />
                     )}
 
@@ -383,6 +484,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                             title="Music for Your Mood"
                             icon={<SpotifyIcon className="w-4 h-4" />}
                             items={musicSuggestions}
+                            onSave={saveCure}
+                            onAction={completeSuggestion}
+                            savedCures={state.savedCures}
+                            completedSuggestions={state.completedSuggestions || []}
                         />
                     )}
                     {externalContentSuggestions.length > 0 && (
@@ -390,6 +495,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                             title="Discovery" 
                             icon={<BookOpenIcon className="w-4 h-4" />}
                             items={externalContentSuggestions}
+                            onSave={saveCure}
+                            onAction={completeSuggestion}
+                            savedCures={state.savedCures}
+                            completedSuggestions={state.completedSuggestions || []}
                         />
                     )}
                 </div>
@@ -413,20 +522,67 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({ state, actions }) => {
                     onComplete={handleTourComplete} 
                 />
             )}
+
+            <PartnerSessionModal
+                isOpen={isPartnerSessionModalOpen}
+                partnerUsername={userProfile.partnerUsername || null}
+                onClose={() => setIsPartnerSessionModalOpen(false)}
+                onStartSolo={() => {
+                    toggleDateNightMode();
+                    setIsPartnerSessionModalOpen(false);
+                }}
+            />
+            
+            <UpgradeModal 
+                isOpen={isUpgradeModalOpen} 
+                onClose={() => setIsUpgradeModalOpen(false)} 
+                onUpgrade={actions.upgradeSubscription} 
+                username={userProfile.username} 
+            />
+
+            <PostFirstCurePaywall 
+                isOpen={state.suggestionsFetchCount === 1 && isFree && !hasSeenFirstSuggestion}
+                onDismiss={() => setHasSeenFirstSuggestion(true)}
+                onUpgrade={() => {
+                    actions.upgradeSubscription('Best');
+                    setHasSeenFirstSuggestion(true);
+                }}
+            />
+
+
         </div>
     );
 };
 
-const SuggestionSection: React.FC<{ title: string, icon: React.ReactNode, items: Suggestion[] }> = ({ title, icon, items }) => (
+const SuggestionSection: React.FC<{ 
+    title: string, 
+    icon: React.ReactNode, 
+    items: Suggestion[], 
+    onSave?: (s: Suggestion) => void, 
+    onAction?: (s: Suggestion) => void,
+    savedCures: SavedCure[],
+    completedSuggestions: string[]
+}> = ({ title, icon, items, onSave, onAction, savedCures, completedSuggestions }) => (
     <div className="space-y-4">
         <div className="flex items-center gap-2 ml-1">
             <div className="text-ios-accent">{icon}</div>
             <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-ios-muted">{title}</h3>
         </div>
         <div className="grid gap-4">
-            {items.map((item, idx) => (
-                <SuggestionCard key={idx} suggestion={item} />
-            ))}
+            {items.map((item, idx) => {
+                const isSaved = (savedCures || []).some(c => c.suggestion?.title === item.title);
+                const isCompleted = (completedSuggestions || []).includes(item.title);
+                return (
+                    <SuggestionCard 
+                        key={idx} 
+                        suggestion={item} 
+                        onSave={onSave} 
+                        onAction={onAction} 
+                        isSaved={isSaved}
+                        isCompleted={isCompleted}
+                    />
+                );
+            })}
         </div>
     </div>
 );
@@ -453,48 +609,54 @@ function getPlatformConfig(icon: Suggestion['icon']): PlatformConfig | null {
             return {
                 label: 'Watch on YouTube',
                 icon: <YoutubeIcon className="w-3.5 h-3.5" />,
-                bgClass: 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30',
-                textClass: 'text-red-600 dark:text-red-400',
-                borderClass: 'border-red-200 dark:border-red-800',
+                bgClass: 'bg-red-50  hover:bg-red-100 :bg-red-900/30',
+                textClass: 'text-red-600 ',
+                borderClass: 'border-red-200 ',
             };
         case 'Podcast':
             return {
                 label: 'Listen to Podcast',
                 icon: <PodcastIcon className="w-3.5 h-3.5" />,
-                bgClass: 'bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100',
-                textClass: 'text-purple-600 dark:text-purple-400',
-                borderClass: 'border-purple-200 dark:border-purple-800',
+                bgClass: 'bg-purple-50  hover:bg-purple-100',
+                textClass: 'text-purple-600 ',
+                borderClass: 'border-purple-200 ',
             };
         case 'Book':
             return {
                 label: 'Find This Book',
                 icon: <BookOpenIcon className="w-3.5 h-3.5" />,
-                bgClass: 'bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100',
-                textClass: 'text-amber-700 dark:text-amber-400',
-                borderClass: 'border-amber-200 dark:border-amber-800',
+                bgClass: 'bg-amber-50  hover:bg-amber-100',
+                textClass: 'text-amber-700 ',
+                borderClass: 'border-amber-200 ',
             };
         case 'Game':
             return {
                 label: 'Play Now',
                 icon: <GamepadIcon className="w-3.5 h-3.5" />,
                 bgClass: 'bg-ios-accent/10 hover:bg-ios-accent/20',
-                textClass: 'text-ios-accent dark:text-blue-400',
+                textClass: 'text-ios-accent ',
                 borderClass: 'border-ios-accent/30',
             };
         case 'Local':
             return {
                 label: 'Get Directions',
                 icon: <MapPinIcon className="w-3.5 h-3.5" />,
-                bgClass: 'bg-green-50 dark:bg-green-900/20 hover:bg-green-100',
-                textClass: 'text-green-700 dark:text-green-400',
-                borderClass: 'border-green-200 dark:border-green-800',
+                bgClass: 'bg-green-50  hover:bg-green-100',
+                textClass: 'text-green-700 ',
+                borderClass: 'border-green-200 ',
             };
         default:
             return null;
     }
 }
 
-const SuggestionCard: React.FC<{ suggestion: Suggestion }> = ({ suggestion }) => {
+const SuggestionCard: React.FC<{ 
+    suggestion: Suggestion; 
+    onSave?: (s: Suggestion) => void; 
+    onAction?: (s: Suggestion) => void;
+    isSaved?: boolean;
+    isCompleted?: boolean;
+}> = ({ suggestion, onSave, onAction, isSaved = false, isCompleted = false }) => {
     const getIcon = () => {
         switch(suggestion.icon) {
             case 'Podcast': return <PodcastIcon className="w-4 h-4 text-purple-500" />;
@@ -511,33 +673,98 @@ const SuggestionCard: React.FC<{ suggestion: Suggestion }> = ({ suggestion }) =>
     const platform = getPlatformConfig(suggestion.icon);
     const hasLink = !!suggestion.link;
 
+    const getCategoryEmoji = (category: string) => {
+        const lower = category.toLowerCase();
+        if (lower.includes('health') || lower.includes('fitness')) return '💪';
+        if (lower.includes('entertainment') || lower.includes('movie')) return '🍿';
+        if (lower.includes('social')) return '🎉';
+        if (lower.includes('work') || lower.includes('productiv')) return '💼';
+        if (lower.includes('hobby') || lower.includes('craft')) return '🎨';
+        if (lower.includes('shop') || lower.includes('errand')) return '🛒';
+        if (lower.includes('lifestyle')) return '🌱';
+        if (lower.includes('music')) return '🎵';
+        if (lower.includes('food') || lower.includes('dining')) return '🍽️';
+        if (lower.includes('mindful') || lower.includes('game')) return '🧘';
+        return '✨';
+    };
+
     const cardContent = (
-        <div className="p-4 bg-ios-card dark:bg-gray-800 rounded-2xl border border-ios-border dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 group">
-            <div className="flex items-start gap-4">
-                <div className="mt-1 p-2.5 bg-ios-bg dark:bg-gray-900 rounded-full group-hover:scale-110 transition-transform flex-shrink-0">
-                    {getIcon()}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start gap-2">
-                        <h4 className="text-lg font-serif italic text-ios-text dark:text-white group-hover:text-ios-accent transition-colors leading-tight">{suggestion.title}</h4>
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-ios-muted bg-ios-bg dark:bg-gray-700 px-2 py-1 rounded-md flex-shrink-0">{suggestion.category}</span>
+        <div className="p-3 bg-ios-card  rounded-2xl border border-ios-border  shadow-sm hover:shadow-md transition-all duration-300 group">
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="p-2 mt-0.5 bg-ios-bg  rounded-full flex-shrink-0">
+                        {getIcon()}
                     </div>
-                    <p className="text-xs text-ios-muted dark:text-gray-400 mt-1 leading-relaxed">{suggestion.description}</p>
-                    
-                    {hasLink && platform && (
-                        <div className="mt-3">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all ${platform.bgClass} ${platform.textClass} ${platform.borderClass}`}>
-                                {platform.icon}
-                                {platform.label}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2">
+                            <h4 className="text-base font-serif italic text-ios-text  leading-tight">{suggestion.title}</h4>
+                            <span 
+                                className="text-sm bg-ios-bg  px-1.5 py-0.5 rounded-md flex-shrink-0" 
+                                title={suggestion.category}
+                            >
+                                {getCategoryEmoji(suggestion.category)}
                             </span>
                         </div>
+                        <p className="text-[11px] text-ios-muted  mt-0.5 leading-snug">{suggestion.description}</p>
+                        
+                        {hasLink && platform && (
+                            <div className="mt-3">
+                                <a 
+                                    href={suggestion.link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all ${platform.bgClass} ${platform.textClass} ${platform.borderClass}`}
+                                >
+                                    {platform.icon}
+                                    {platform.label}
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                {/* Action buttons on the right */}
+                <div className="flex flex-col items-center gap-2 flex-shrink-0 ml-auto">
+                    {onSave && (
+                        <button 
+                            onClick={(e) => { 
+                                e.preventDefault(); 
+                                e.stopPropagation(); 
+                                onSave(suggestion); 
+                            }} 
+                            className={`p-1.5 rounded-full transition-colors ${
+                                isSaved ? 'text-red-500 hover:text-red-650' : 'text-ios-muted hover:text-ios-accent'
+                            }`}
+                            title={isSaved ? "Saved to Sanctuary" : "Save for later"}
+                        >
+                            <HeartIcon className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                        </button>
+                    )}
+                    {onAction && (
+                        <button 
+                            onClick={(e) => { 
+                                e.preventDefault(); 
+                                e.stopPropagation(); 
+                                if (!isCompleted) onAction(suggestion); 
+                            }} 
+                            className={`p-1.5 rounded-full transition-all border ${
+                                isCompleted 
+                                    ? 'bg-green-500/10 border-green-500/20 text-green-600 ' 
+                                    : 'bg-ios-bg  text-ios-muted border-transparent hover:text-ios-accent hover:border-ios-accent/20 active:scale-95'
+                            }`}
+                            title={isCompleted ? "Completed" : "Mark as completed"}
+                            disabled={isCompleted}
+                        >
+                            <CheckCircleIcon className="w-4 h-4" />
+                        </button>
                     )}
                 </div>
             </div>
         </div>
     );
 
-    if (hasLink) {
+    if (hasLink && !onAction && !onSave) {
         return (
             <a href={suggestion.link} target="_blank" rel="noopener noreferrer" className="block">
                 {cardContent}
@@ -545,5 +772,47 @@ const SuggestionCard: React.FC<{ suggestion: Suggestion }> = ({ suggestion }) =>
         );
     }
 
-    return <div>{cardContent}</div>;
+    return (
+        <div 
+            onClick={(e) => {
+                if (isCompleted) return;
+                if (suggestion.link) {
+                    window.open(suggestion.link, '_blank', 'noopener,noreferrer');
+                }
+            }} 
+            className={`transition-opacity duration-300 ${isCompleted ? 'opacity-60' : 'cursor-pointer'}`}
+        >
+            {cardContent}
+        </div>
+    );
+};
+
+const PostFirstCurePaywall: React.FC<{ isOpen: boolean; onDismiss: () => void; onUpgrade: () => void }> = ({ isOpen, onDismiss, onUpgrade }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white  rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl relative animate-scale-in">
+                <button onClick={onDismiss} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 :text-white z-10">
+                    ✕
+                </button>
+                <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-ios-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-3xl">✨</span>
+                    </div>
+                    <h2 className="text-2xl font-serif italic text-gray-900  mb-2">Unlock Your Sanctuary</h2>
+                    <p className="text-sm text-gray-500  mb-6">
+                        You've discovered your first personalized suggestion! Upgrade to Premium for unlimited daily refreshes, real-time partner syncing, and deeper inventory integration.
+                    </p>
+                    <div className="space-y-3">
+                        <button onClick={onUpgrade} className="w-full py-4 bg-[#1A1815]  text-white #1A1815] font-bold text-[10px] uppercase tracking-[0.25em] rounded-2xl hover:bg-[#2D2A26] :bg-gray-100 transition-all">
+                            Start Free Trial
+                        </button>
+                        <button onClick={onDismiss} className="w-full py-4 bg-transparent text-gray-500 font-bold text-[10px] uppercase tracking-[0.25em] hover:text-gray-900 :text-white transition-all">
+                            Maybe Later
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };

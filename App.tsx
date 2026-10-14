@@ -8,12 +8,15 @@ import { JourneyScreen } from './screens/JourneyScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ChatScreen } from './screens/ChatScreen';
 import { PrivacyPolicyScreen } from './screens/PrivacyPolicyScreen';
+import { LandingScreen } from './screens/LandingScreen';
 import { HomeIcon, PackageIcon, UserIcon, MessageSquareIcon } from './components/icons/Icons';
 import { HobbyDetailModal } from './components/HobbyDetailModal';
 import { Mood } from './types';
 import { supabase } from './services/supabaseClient';
+import { scheduleFridayEveningNudge, scheduleDailyInventoryNudges } from './services/notificationService';
 import { Capacitor } from '@capacitor/core';
 import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 const MOOD_THEMES: Record<string, { accent: string; overlay: string; darkOverlay: string }> = {
   [Mood.Energized]:  { accent: '#F97316', overlay: 'rgba(249,115,22,0.04)',  darkOverlay: 'rgba(249,115,22,0.07)' },
@@ -33,6 +36,7 @@ function App() {
   const { state, users, actions } = useAppStore();
   const { userProfile, activeScreen, hobbyToDetail, currentMood } = state;
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
 
   const theme = useMemo(() => (currentMood ? MOOD_THEMES[currentMood] ?? DEFAULT_THEME : DEFAULT_THEME), [currentMood]);
 
@@ -50,7 +54,7 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('checkout') === 'success') {
-      actions.upgradeSubscription('Premium');
+      actions.upgradeSubscription('Best');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -109,8 +113,32 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (userProfile.isLoggedIn && userProfile.preferences?.enableNotifications !== false) {
+      scheduleFridayEveningNudge();
+      scheduleDailyInventoryNudges(state.inventory);
+    }
+  }, [userProfile.isLoggedIn, userProfile.preferences?.enableNotifications, state.inventory]);
+
   if (!userProfile.isLoggedIn) {
-    return <LoginScreen />;
+    if (showAuth) {
+      return <LoginScreen />;
+    }
+    return <LandingScreen onGetStarted={() => setShowAuth(true)} isLoggedIn={false} />;
+  }
+
+  // Hard Paywall
+  if (userProfile.subscriptionTier === 'None') {
+    return <LandingScreen 
+      onGetStarted={() => {
+        alert("Choose a plan in the Pricing section below!");
+        const el = document.getElementById('pricing');
+        if(el) el.scrollIntoView({behavior: 'smooth'});
+      }} 
+      onSelectPlan={(plan) => actions.upgradeSubscription(plan as any)}
+      isLoggedIn={true} 
+      onLogout={actions.logout} 
+    />;
   }
 
   if (!userProfile.onboardingCompleted) {
@@ -134,7 +162,7 @@ function App() {
   const isChatScreen = activeScreen === 'Chat';
 
   return (
-    <div className="bg-ios-bg dark:bg-gray-900 min-h-screen font-sans text-ios-text dark:text-gray-100 transition-colors duration-500 relative">
+    <div className="bg-ios-bg  min-h-screen font-sans text-ios-text  transition-colors duration-500 relative">
       {/* Subtle mood tint overlay — transitions smoothly when mood changes */}
       <div
         className="pointer-events-none fixed inset-0 z-0 transition-all duration-700"
@@ -156,12 +184,12 @@ function App() {
         />
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/85 backdrop-blur-md dark:bg-gray-900/85 border-t border-ios-border dark:border-gray-700 transition-colors duration-300 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/85 backdrop-blur-md  border-t border-ios-border  transition-colors duration-300 z-50">
         <div className="flex justify-around h-16">
-          <NavButton label="Today"     icon={<HomeIcon />}           isActive={activeScreen === 'Today'}   onClick={() => actions.setActiveScreen('Today')}   />
-          <NavButton label="Inventory" icon={<PackageIcon />}        isActive={activeScreen === 'Journey'} onClick={() => actions.setActiveScreen('Journey')} />
-          <NavButton id="nav-chat-btn" label="Chat"      icon={<MessageSquareIcon />}  isActive={activeScreen === 'Chat'}    onClick={() => actions.setActiveScreen('Chat')}    />
-          <NavButton label="Profile"   icon={<UserIcon />}           isActive={activeScreen === 'Profile'} onClick={() => actions.setActiveScreen('Profile')} />
+          <NavButton label="Today"     icon={<HomeIcon strokeWidth={activeScreen === 'Today' ? 3 : 2} />}           isActive={activeScreen === 'Today'}   onClick={() => actions.setActiveScreen('Today')}   />
+          <NavButton label="Inventory" icon={<PackageIcon strokeWidth={activeScreen === 'Journey' ? 3 : 2} />}        isActive={activeScreen === 'Journey'} onClick={() => actions.setActiveScreen('Journey')} />
+          <NavButton id="nav-chat-btn" label="Chat"      icon={<MessageSquareIcon strokeWidth={activeScreen === 'Chat' ? 3 : 2} />}  isActive={activeScreen === 'Chat'}    onClick={() => actions.setActiveScreen('Chat')}    />
+          <NavButton label="Profile"   icon={<UserIcon strokeWidth={activeScreen === 'Profile' ? 3 : 2} />}           isActive={activeScreen === 'Profile'} onClick={() => actions.setActiveScreen('Profile')} />
         </div>
       </nav>
     </div>
@@ -171,10 +199,13 @@ function App() {
 const NavButton: React.FC<{ id?: string; label: string; icon: React.ReactNode; isActive: boolean; onClick: () => void }> = ({ id, label, icon, isActive, onClick }) => (
   <button
     id={id}
-    onClick={onClick}
-    className={`flex flex-col items-center justify-center w-full text-[9px] uppercase tracking-widest font-bold transition-all duration-200 ${isActive ? 'text-ios-accent scale-105' : 'text-ios-muted hover:text-ios-accent'}`}
+    onClick={async () => {
+      await Haptics.impact({ style: ImpactStyle.Light });
+      onClick();
+    }}
+    className={`flex flex-col items-center justify-center w-full text-[9px] uppercase tracking-widest font-bold transition-all duration-200 active:scale-90 ${isActive ? 'text-ios-accent scale-105' : 'text-ios-muted hover:text-ios-accent'}`}
   >
-    <div className="w-5 h-5 mb-0.5 flex items-center justify-center">{icon}</div>
+    <div className={`w-5 h-5 mb-0.5 flex items-center justify-center transition-transform ${isActive ? 'scale-110' : ''}`}>{icon}</div>
     {label}
   </button>
 );

@@ -33,13 +33,11 @@ export enum HabitFrequency {
 }
 
 export enum InventoryCategory {
-    HobbiesAndCrafts = "Hobbies & Crafts",
+    HobbiesAndCrafts = "Games & Crafts",
     Entertainment = "Entertainment",
     HealthAndFitness = "Health & Fitness",
     WorkAndProductivity = "Work & Productivity",
     SocialActivities = "Social Activities",
-    FoodAndCooking = "Food & Cooking",
-    Beverages = "Beverages",
     ShoppingAndErrands = "Shopping & Errands",
     Other = "Other",
 }
@@ -58,6 +56,7 @@ export enum RelationshipStatus {
 export enum SocialContext {
     JustMe = "Just Me",
     MyPartner = "My Partner",
+    WithFamily = "With Family",
     WithFriends = "With Friends",
 }
 
@@ -92,10 +91,11 @@ export enum ExternalContentType {
 }
 
 export interface UserPreferences {
-    enableNotifications: boolean;
-    dataSharing: boolean;
-    profileVisibility: 'private' | 'friends';
-    allowAnalytics: boolean;
+    enableNotifications?: boolean;
+    dataSharing?: boolean;
+    profileVisibility?: 'private' | 'friends';
+    allowAnalytics?: boolean;
+    digitalApps?: string[];
     energyDefaults?: string;
 }
 
@@ -107,11 +107,19 @@ export interface Achievement {
     gold: number;
 }
 
+export interface FamilyProfile {
+    hasKids: boolean;
+    kidsCount?: number;
+    kidsAges?: string; // e.g. "3, 5, 8"
+    hasPets: boolean;
+    pets?: string[]; // e.g., 'Dog', 'Cat'
+}
+
 export interface UserProfile {
     isLoggedIn: boolean;
     username: string | null;
     onboardingCompleted: boolean;
-    subscriptionTier: 'Free' | 'Premium';
+    subscriptionTier: 'None' | 'Good' | 'Better' | 'Best';
     trialEndDate: string | null;
     level: number;
     xp: number;
@@ -120,12 +128,14 @@ export interface UserProfile {
     relationshipStatus: RelationshipStatus;
     partnerUsername: string | null;
     livingSituation: 'together' | 'separately' | null;
+    family: FamilyProfile;
     friendUsernames: string[];
     preferences: UserPreferences;
     achievements: string[];
     lastSurveyDate: string | null;
     lastFetchXPDate: string | null;
     createdAt?: string;
+    savedCures: SavedCure[];
 }
 
 export interface HabitCompletion {
@@ -211,6 +221,13 @@ export interface Suggestion {
     icon: 'Inventory' | 'Podcast' | 'Book' | 'YouTube' | 'Local' | 'Spotify' | 'DateNight' | 'Game';
 }
 
+export interface SavedCure {
+    id: string;
+    suggestion: Suggestion;
+    savedAt: string;
+    isArchived: boolean;
+}
+
 export interface SurveyQuestion {
     question: string;
     options: string[];
@@ -238,6 +255,7 @@ export interface AppState {
     userProfile: UserProfile;
     habits: Habit[];
     hobbies: string[];
+    digitalApps: string[];
     goals: string[];
     inventory: InventoryItem[];
     commitments: Commitment[];
@@ -252,6 +270,7 @@ export interface AppState {
     musicSuggestions: Suggestion[];
     localActivitySuggestions: Suggestion[];
     miniGameSuggestions: Suggestion[];
+    trendingSuggestions: Suggestion[];
     dailyRefresh: ProactiveSuggestion | null;
     isLoading: boolean;
     error: string | null;
@@ -271,6 +290,11 @@ export interface AppState {
     dailyFetchCountDate: string | null;
     weeklyReflections?: WeeklyReflection[];
     friendInventoryContext?: 'my' | 'their' | 'both';
+    dateNightContext?: 'out' | 'inventory';
+    savedCures: SavedCure[];
+    hasSeenFirstSuggestion?: boolean;
+    dailyRefreshHistory?: Array<{ id: string; question: string; answer: string; userAnswer: string; date: string }>;
+    completedSuggestions?: string[];
 }
 
 export interface OnboardingData {
@@ -279,6 +303,7 @@ export interface OnboardingData {
     gameListText: string;
     goals: string[];
     hobbies: string[];
+    digitalApps: string[];
     inventoryText: string;
 }
 
